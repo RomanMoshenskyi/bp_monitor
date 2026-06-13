@@ -31,11 +31,13 @@ def _make_pass_field(placeholder: str = "") -> tuple[QWidget, QLineEdit]:
     edit.setPlaceholderText(placeholder)
     edit.setEchoMode(QLineEdit.EchoMode.Password)
     toggle = QPushButton("👁")
+    toggle.setObjectName("eyeBtn")
     toggle.setCheckable(True)
-    toggle.setFixedSize(34, 28)
+    toggle.setFixedSize(36, 34)
     toggle.setStyleSheet(
-        "QPushButton{border:1px solid #d6e2ef;border-radius:8px;background:white;}"
-        "QPushButton:checked{background:#e8f3ff;}"
+        "QPushButton#eyeBtn{border:1.5px solid #e2e8f0;border-radius:9px;background:#f8fafc;color:#64748b;font-size:14px;}"
+        "QPushButton#eyeBtn:hover{background:#f0f4ff;border-color:#a5b4fc;}"
+        "QPushButton#eyeBtn:checked{background:#eef2ff;border-color:#6366f1;color:#6366f1;}"
     )
     toggle.toggled.connect(
         lambda on: edit.setEchoMode(
@@ -91,7 +93,7 @@ class SettingsPage(QWidget):
         self.full_name_edit.setPlaceholderText("Прізвище Ім'я По батькові")
 
         self.username_label = QLabel()
-        self.username_label.setStyleSheet("color:#5a7a9a; font-style:italic;")
+        self.username_label.setStyleSheet("color:#4f46e5; font-weight:600; font-style:normal;")
 
         self.email_edit = QLineEdit()
         self.email_edit.setPlaceholderText("example@mail.com  (необов'язково)")
@@ -102,7 +104,7 @@ class SettingsPage(QWidget):
         self.age_spin.setValue(0)
 
         self.role_label = QLabel()
-        self.role_label.setStyleSheet("color:#5a7a9a; font-style:italic;")
+        self.role_label.setStyleSheet("color:#059669; font-weight:600; font-style:normal;")
 
         info_form.addRow("Логін:", self.username_label)
         info_form.addRow("Роль:", self.role_label)
@@ -161,7 +163,7 @@ class SettingsPage(QWidget):
             "у вимірюваннях та генерації рекомендацій."
         )
         hint.setWordWrap(True)
-        hint.setStyleSheet("color:#667a90; font-size:12px;")
+        hint.setStyleSheet("color:#64748b; font-size:12px; background:#f8fafc; border-radius:8px; padding:8px 10px;")
         targets_layout.addWidget(hint)
 
         targets_form = QFormLayout()
@@ -204,7 +206,7 @@ class SettingsPage(QWidget):
             "вимірювань у форматі JSON."
         )
         tools_desc.setWordWrap(True)
-        tools_desc.setStyleSheet("color:#667a90; font-size:12px;")
+        tools_desc.setStyleSheet("color:#64748b; font-size:12px;")
         tools_layout.addWidget(tools_desc)
 
         export_btn = QPushButton("📤  Експортувати JSON")
@@ -221,7 +223,7 @@ class SettingsPage(QWidget):
             "Імпорт додає вимірювання з файлу в БД. Дублікати (за ID) автоматично пропускаються."
         )
         import_hint.setWordWrap(True)
-        import_hint.setStyleSheet("color:#667a90; font-size:11px;")
+        import_hint.setStyleSheet("color:#94a3b8; font-size:11px;")
         tools_layout.addWidget(import_hint)
         right.addWidget(tools_panel)
         right.addStretch(1)
@@ -318,10 +320,16 @@ class SettingsPage(QWidget):
             QMessageBox.critical(self, "Помилка імпорту", str(exc))
             return
         imported = result.get("imported", 0)
+        skipped = result.get("skipped", 0)
         errors = result.get("errors", 0)
+        details = result.get("error_details", [])
         msg = f"Імпортовано вимірювань: {imported}"
+        if skipped:
+            msg += f"\nПропущено дублікатів: {skipped}"
         if errors:
-            msg += f"\nПомилок при імпорті: {errors}"
+            msg += f"\nПомилок: {errors}"
+            if details:
+                msg += f"\n\nПерша помилка:\n{details[0]}"
         QMessageBox.information(self, "Імпорт завершено", msg)
 
     def _change_password(self) -> None:

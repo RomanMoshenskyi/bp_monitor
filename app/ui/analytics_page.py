@@ -33,9 +33,12 @@ class AnalyticsPage(QWidget):
         layout.setSpacing(18)
 
         top = QHBoxLayout()
-        top.addWidget(SectionTitle("Поглиблена аналітика"))
+        top.addWidget(SectionTitle("📈  Поглиблена аналітика"))
         top.addStretch(1)
-        top.addWidget(QLabel("Період:"))
+        period_lbl = QLabel("Період аналізу:")
+        period_lbl.setStyleSheet("color:#64748b; font-weight:600; font-size:12px;")
+        self.period_box.setFixedWidth(160)
+        top.addWidget(period_lbl)
         top.addWidget(self.period_box)
         layout.addLayout(top)
 
@@ -43,10 +46,10 @@ class AnalyticsPage(QWidget):
         cards.setHorizontalSpacing(16)
         cards.setVerticalSpacing(16)
         self.metric_cards = [
-            GlassCard("Записів", "0", ""),
-            GlassCard("Макс. систолічний", "0", "мм рт. ст."),
-            GlassCard("Мін. діастолічний", "0", "мм рт. ст."),
-            GlassCard("Середній пульс", "0", "уд/хв"),
+            GlassCard("📊 Записів", "0", "у періоді", accent_index=0),
+            GlassCard("⬆ Макс. систолічний", "0", "мм рт. ст.", accent_index=3),
+            GlassCard("⬇ Мін. діастолічний", "0", "мм рт. ст.", accent_index=2),
+            GlassCard("💓 Пульс", "0", "уд/хв середній", accent_index=1),
         ]
         for i, card in enumerate(self.metric_cards):
             cards.addWidget(card, 0, i)
@@ -73,6 +76,10 @@ class AnalyticsPage(QWidget):
         self.recommendations = QTextEdit()
         self.recommendations.setReadOnly(True)
         self.recommendations.setMinimumHeight(280)
+        self.recommendations.setStyleSheet(
+            "QTextEdit { background:#fafaff; border:1.5px solid #e0e7ff;"
+            " border-radius:12px; padding:12px; font-size:13px; line-height:1.6; color:#374151; }"
+        )
         rec_layout.addWidget(self.recommendations)
 
         center.addWidget(chart_panel, 3)
@@ -89,7 +96,7 @@ class AnalyticsPage(QWidget):
         )
         self.atm_label = QLabel("Недостатньо даних")
         self.atm_label.setWordWrap(True)
-        self.atm_label.setStyleSheet("color:#65798e; line-height:1.5;")
+        self.atm_label.setStyleSheet("color:#475569; font-size:13px;")
         bottom_layout.addWidget(self.atm_label)
         layout.addWidget(bottom)
 

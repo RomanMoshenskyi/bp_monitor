@@ -31,11 +31,12 @@ class DashboardPage(QWidget):
         banner_layout.setSpacing(18)
 
         banner_text_box = QVBoxLayout()
-        title = QLabel("Розумний моніторинг артеріального тиску")
+        banner_text_box.setSpacing(6)
+        title = QLabel("💓  Розумний моніторинг АТ")
         title.setObjectName("bannerTitle")
         text = QLabel(
-            "Система фіксує вимірювання, формує аналітику та дозволяє додатково "
-            "співставляти зміни показників із атмосферним тиском на основі даних у PostgreSQL."
+            "Фіксуйте вимірювання, стежте динаміку артеріального тиску та пульсу. "
+            "Система автоматично зіставляє зміни з атмосферним тиском."
         )
         text.setObjectName("bannerText")
         text.setWordWrap(True)
@@ -53,11 +54,11 @@ class DashboardPage(QWidget):
         labels = [
             ("Середній тиск", "0/0", "За всіма записами"),
             ("Середній пульс", "0", "уд/хв"),
-            ("Стан", "Немає даних", "Останнє вимірювання"),
+            ("Поточний стан", "Немає даних", "Останнє вимірювання"),
             ("Середній атм. тиск", "0", "мм рт. ст."),
         ]
         for i, (t, v, s) in enumerate(labels):
-            card = GlassCard(t, v, s)
+            card = GlassCard(t, v, s, accent_index=i)
             self.cards.append(card)
             cards_layout.addWidget(card, i // 2, i % 2)
         main.addLayout(cards_layout)
@@ -82,14 +83,19 @@ class DashboardPage(QWidget):
         info_layout.addWidget(SectionTitle("Короткий висновок"))
         self.latest_label = QLabel("Останній запис відсутній")
         self.latest_label.setWordWrap(True)
-        self.latest_label.setStyleSheet("color:#64788e; line-height:1.45;")
+        self.latest_label.setStyleSheet("color:#475569; font-size:13px;")
         info_layout.addWidget(self.latest_label)
-        self.trend_label = QLabel("Тренд: немає даних")
-        self.trend_label.setStyleSheet("font-size:14px; font-weight:700; color:#1c3150;")
+
+        self.trend_label = QLabel("📉  Тренд: немає даних")
+        self.trend_label.setStyleSheet(
+            "font-size:13px; font-weight:700; color:#4f46e5;"
+            "background:#eef2ff; border-radius:8px; padding:6px 10px;"
+        )
         info_layout.addWidget(self.trend_label)
-        self.corr_label = QLabel("Кореляція з атмосферним тиском: —")
+
+        self.corr_label = QLabel("📌 Кореляція з атмосферним тиском: —")
         self.corr_label.setWordWrap(True)
-        self.corr_label.setStyleSheet("color:#64788e;")
+        self.corr_label.setStyleSheet("color:#64748b; font-size:12px;")
         info_layout.addWidget(self.corr_label)
         info_layout.addStretch(1)
 
@@ -128,13 +134,13 @@ class DashboardPage(QWidget):
             self.gauge.set_value(120, "Немає даних")
             self.latest_label.setText("Останній запис відсутній")
 
-        self.trend_label.setText(f"Тренд: {stats['pressure_trend']}")
+        self.trend_label.setText(f"📉  Тренд: {stats['pressure_trend']}")
         if stats["correlation"] is None:
-            self.corr_label.setText("Кореляція з атмосферним тиском: недостатньо даних")
+            self.corr_label.setText("📌 Кореляція з атмосферним тиском: недостатньо даних")
         else:
             self.corr_label.setText(
-                "Кореляція з атмосферним тиском: "
-                f"{stats['correlation']} (орієнтовна статистична оцінка, не медичний висновок)"
+                "📌 Кореляція з атм. тиском: "
+                f"{stats['correlation']}"
             )
 
         last14 = measurements[-14:]

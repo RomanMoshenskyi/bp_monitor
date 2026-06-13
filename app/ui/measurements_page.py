@@ -4,11 +4,13 @@ import uuid
 from typing import Callable, List
 
 from PyQt6.QtCore import QDateTime, Qt, QTimer
+from PyQt6.QtGui import QColor, QFont
 from PyQt6.QtWidgets import (
     QAbstractItemView,
     QCheckBox,
     QComboBox,
     QDateTimeEdit,
+    QDialog,
     QFormLayout,
     QFrame,
     QHBoxLayout,
@@ -16,6 +18,7 @@ from PyQt6.QtWidgets import (
     QLabel,
     QMessageBox,
     QPushButton,
+    QScrollArea,
     QSpinBox,
     QTableWidget,
     QTableWidgetItem,
@@ -125,10 +128,10 @@ class MeasurementsPage(QWidget):
         form_layout.addLayout(form)
 
         buttons = QHBoxLayout()
-        self.add_btn = QPushButton("Зберегти запис")
+        self.add_btn = QPushButton("  ✚  Зберегти запис")
         self.add_btn.setObjectName("primaryButton")
         self.add_btn.clicked.connect(self._add_measurement)
-        self.clear_btn = QPushButton("Очистити")
+        self.clear_btn = QPushButton("↺  Очистити")
         self.clear_btn.setObjectName("secondaryButton")
         self.clear_btn.clicked.connect(self._clear_form)
         buttons.addWidget(self.add_btn)
@@ -144,33 +147,50 @@ class MeasurementsPage(QWidget):
 
         self.table = QTableWidget(0, 8)
         self.table.setHorizontalHeaderLabels(
-            ["Дата", "Тиск", "Пульс", "Атм. тиск", "Стан", "Ліки", "Активність", "Примітки"]
+            ["📅 Дата", "🩺 Тиск", "💓 Пульс", "🌡 Атм.", "😌 Стан", "💊 Ліки", "🏃 Активність", "📝 Примітки"]
         )
         self.table.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
         self.table.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
         self.table.verticalHeader().setVisible(False)
-        self.table.setAlternatingRowColors(False)
-        self.table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
+        self.table.setAlternatingRowColors(True)
+        self.table.setShowGrid(False)
+        self.table.setWordWrap(False)
+        hdr = self.table.horizontalHeader()
+        hdr.setSectionResizeMode(QHeaderView.ResizeMode.Interactive)
+        hdr.setSectionResizeMode(0, QHeaderView.ResizeMode.ResizeToContents)
+        hdr.setSectionResizeMode(7, QHeaderView.ResizeMode.Stretch)
+        hdr.setMinimumSectionSize(90)
+        hdr.setDefaultSectionSize(110)
+        self.table.verticalHeader().setDefaultSectionSize(42)
+        self.table.setHorizontalScrollMode(QAbstractItemView.ScrollMode.ScrollPerPixel)
+        self.table.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
         table_layout.addWidget(self.table)
 
         table_buttons = QHBoxLayout()
-        self.delete_btn = QPushButton("Видалити вибраний запис")
-        self.delete_btn.setObjectName("secondaryButton")
+        self.delete_btn = QPushButton("🗑  Видалити запис")
+        self.delete_btn.setObjectName("dangerButton")
         self.delete_btn.clicked.connect(self._delete_selected)
 
-        self.prev_btn = QPushButton("← Попередня")
+        self.prev_btn = QPushButton("‹  Назад")
         self.prev_btn.setObjectName("secondaryButton")
+        self.prev_btn.setFixedWidth(90)
         self.prev_btn.clicked.connect(self._prev_page)
-        self.next_btn = QPushButton("Наступна →")
+        self.next_btn = QPushButton("Далі  ›")
         self.next_btn.setObjectName("secondaryButton")
+        self.next_btn.setFixedWidth(90)
         self.next_btn.clicked.connect(self._next_page)
         self.page_label = QLabel("Сторінка 1")
-        self.page_label.setStyleSheet("color:#60748a; font-size:12px;")
+        self.page_label.setStyleSheet("color:#6366f1; font-size:12px; font-weight:600;")
+
+        self.expand_btn = QPushButton("⛶  Таблиця на весь екран")
+        self.expand_btn.setObjectName("secondaryButton")
+        self.expand_btn.clicked.connect(self._open_fullscreen_table)
 
         table_buttons.addWidget(self.prev_btn)
         table_buttons.addWidget(self.page_label)
         table_buttons.addWidget(self.next_btn)
         table_buttons.addStretch(1)
+        table_buttons.addWidget(self.expand_btn)
         table_buttons.addWidget(self.delete_btn)
         table_layout.addLayout(table_buttons)
 
@@ -282,15 +302,105 @@ class MeasurementsPage(QWidget):
         self.prev_btn.setEnabled(self._current_page > 0)
         self.next_btn.setEnabled(self._current_page < total_pages - 1)
 
+        _BP_STATUS_COLORS = {
+            "висок": ("#fff1f2", "#e11d48"),
+            "норм":  ("#f0fdf4", "#16a34a"),
+            "низьк": ("#fffbeb", "#d97706"),
+        }
         self.table.setRowCount(len(self.measurements))
         for row_index, measurement in enumerate(self.measurements):
+            # zebra row tint
+            row_bg = QColor("#f8faff") if row_index % 2 == 1 else QColor("#ffffff")
             for col_index, cell_value in enumerate(measurement_to_row(measurement)):
                 item = QTableWidgetItem(cell_value)
                 item.setTextAlignment(
-                    Qt.AlignmentFlag.AlignCenter if col_index < 7 else Qt.AlignmentFlag.AlignLeft
+                    Qt.AlignmentFlag.AlignCenter if col_index < 7 else Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter
                 )
+                item.setBackground(row_bg)
+                # colour-code BP value column (col 1)
+                if col_index == 1:
+                    try:
+                        sys_val = int(cell_value.split("/")[0])
+                        if sys_val >= 140:
+                            item.setForeground(QColor("#e11d48"))
+                            f = QFont(); f.setBold(True); item.setFont(f)
+                        elif sys_val < 100:
+                            item.setForeground(QColor("#d97706"))
+                        else:
+                            item.setForeground(QColor("#16a34a"))
+                    except Exception:
+                        pass
+                # colour-code medication column (col 5)
+                if col_index == 5:
+                    if cell_value == "Так":
+                        item.setForeground(QColor("#6366f1"))
                 self.table.setItem(row_index, col_index, item)
-        self.table.resizeRowsToContents()
+
+    def _open_fullscreen_table(self) -> None:
+        dlg = QDialog(self)
+        dlg.setWindowTitle("📊 Історія вимірювань")
+        dlg.setMinimumSize(1100, 680)
+        dlg.resize(1280, 720)
+        vl = QVBoxLayout(dlg)
+        vl.setContentsMargins(20, 20, 20, 20)
+        vl.setSpacing(14)
+
+        hdr_row = QHBoxLayout()
+        title = QLabel(f"Історія вимірювань  (всього {len(self._all_measurements)} записів)")
+        title.setStyleSheet("font-size:16px; font-weight:700; color:#0f172a;")
+        close_btn = QPushButton("✕  Закрити")
+        close_btn.setObjectName("secondaryButton")
+        close_btn.clicked.connect(dlg.close)
+        hdr_row.addWidget(title)
+        hdr_row.addStretch(1)
+        hdr_row.addWidget(close_btn)
+        vl.addLayout(hdr_row)
+
+        big_table = QTableWidget(0, 8)
+        big_table.setHorizontalHeaderLabels(
+            ["📅 Дата", "🩺 Тиск", "💓 Пульс", "🌡 Атм.", "😌 Стан", "💊 Ліки", "🏃 Активність", "📝 Примітки"]
+        )
+        big_table.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
+        big_table.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
+        big_table.verticalHeader().setVisible(False)
+        big_table.setAlternatingRowColors(True)
+        big_table.setShowGrid(False)
+        big_hdr = big_table.horizontalHeader()
+        big_hdr.setSectionResizeMode(QHeaderView.ResizeMode.Interactive)
+        big_hdr.setSectionResizeMode(0, QHeaderView.ResizeMode.ResizeToContents)
+        big_hdr.setSectionResizeMode(7, QHeaderView.ResizeMode.Stretch)
+        big_hdr.setDefaultSectionSize(120)
+        big_table.verticalHeader().setDefaultSectionSize(42)
+
+        big_table.setRowCount(len(self._all_measurements))
+        for row_index, measurement in enumerate(self._all_measurements):
+            row_bg = QColor("#f8faff") if row_index % 2 == 1 else QColor("#ffffff")
+            for col_index, cell_value in enumerate(measurement_to_row(measurement)):
+                item = QTableWidgetItem(cell_value)
+                item.setTextAlignment(
+                    Qt.AlignmentFlag.AlignCenter if col_index < 7
+                    else Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter
+                )
+                item.setBackground(row_bg)
+                if col_index == 1:
+                    try:
+                        sys_val = int(cell_value.split("/")[0])
+                        if sys_val >= 140:
+                            item.setForeground(QColor("#e11d48"))
+                            f = QFont(); f.setBold(True); item.setFont(f)
+                        elif sys_val < 100:
+                            item.setForeground(QColor("#d97706"))
+                        else:
+                            item.setForeground(QColor("#16a34a"))
+                    except Exception:
+                        pass
+                if col_index == 5 and cell_value == "Так":
+                    item.setForeground(QColor("#6366f1"))
+                big_table.setItem(row_index, col_index, item)
+
+        vl.addWidget(big_table)
+        dlg.setStyleSheet(self.window().styleSheet() if self.window() else "")
+        dlg.exec()
 
     def refresh(self, measurements: List[Measurement]) -> None:
         self._all_measurements = list(reversed(measurements))

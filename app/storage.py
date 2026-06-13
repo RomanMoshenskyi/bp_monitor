@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import uuid
 from dataclasses import asdict
 from pathlib import Path
 from typing import Any, Dict, List, Optional
@@ -119,14 +120,24 @@ class PostgresStorage:
                 pass
 
         # Import measurements
+        error_details: List[str] = []
         for item in data.get("measurements", []):
             try:
+                ts   = item["timestamp"]
+                sys_ = int(item["systolic"])
+                dia_ = int(item["diastolic"])
+                pls_ = int(item["pulse"])
+                if self._measurements.exists_by_fingerprint(
+                    self.user.id, ts, sys_, dia_, pls_
+                ):
+                    skipped += 1
+                    continue
                 m = Measurement(
-                    id=item["id"],
-                    timestamp=item["timestamp"],
-                    systolic=int(item["systolic"]),
-                    diastolic=int(item["diastolic"]),
-                    pulse=int(item["pulse"]),
+                    id=str(uuid.uuid4()),
+                    timestamp=ts,
+                    systolic=sys_,
+                    diastolic=dia_,
+                    pulse=pls_,
                     mood=item.get("mood", "Спокійний"),
                     notes=item.get("notes", ""),
                     atmospheric_pressure=item.get("atmospheric_pressure"),
@@ -135,10 +146,11 @@ class PostgresStorage:
                 )
                 self._measurements.add(m, self.user.id)
                 imported += 1
-            except Exception:
+            except Exception as exc:
                 errors += 1
+                error_details.append(str(exc))
 
-        return {"imported": imported, "skipped": skipped, "errors": errors}
+        return {"imported": imported, "skipped": skipped, "errors": errors, "error_details": error_details}
 
     def get_system_thresholds(self) -> SystemThresholds:
         from .database import db_cursor
@@ -181,6 +193,12 @@ class PostgresStorage:
 
     def get_doctor_recommendations(self, patient_id: int, limit: int = 20) -> List[str]:
         return self._recommendations.get_for_patient(patient_id, limit)
+
+    def get_doctor_recommendations_with_doctor(
+        self, patient_id: int, limit: int = 20
+    ) -> List[tuple]:
+        """Returns list of (text, doctor_name, doctor_email_or_empty)."""
+        return self._recommendations.get_for_patient_with_doctor(patient_id, limit)
 
 
 def create_storage(user: User) -> PostgresStorage:

@@ -82,6 +82,26 @@ class MeasurementRepository:
                 ),
             )
 
+    def exists_by_fingerprint(
+        self, user_id: int, timestamp: str, systolic: int, diastolic: int, pulse: int
+    ) -> bool:
+        """Returns True if a non-deleted record with the same user+time+values exists."""
+        with db_cursor() as cur:
+            cur.execute(
+                """
+                SELECT 1 FROM measurements
+                WHERE user_id = %s
+                  AND timestamp = %s
+                  AND systolic = %s
+                  AND diastolic = %s
+                  AND pulse = %s
+                  AND deleted_at IS NULL
+                LIMIT 1
+                """,
+                (user_id, _parse_timestamp(timestamp), systolic, diastolic, pulse),
+            )
+            return cur.fetchone() is not None
+
     def soft_delete(self, measurement_id: str, user_id: int) -> None:
         with db_cursor() as cur:
             cur.execute(
