@@ -10,6 +10,9 @@ from .activities_view_model import ActivitiesViewModel
 from .thresholds_view_model import ThresholdsViewModel
 from .reports_view_model import ReportsViewModel
 from .recommendations_view_model import RecommendationsViewModel
+from .doctor_reports_view_model import DoctorReportsViewModel
+from .prescriptions_view_model import PrescriptionsViewModel
+from .ai_insights_view_model import AIInsightsViewModel
 
 __all__ = [
     "BaseViewModel",
@@ -21,4 +24,7 @@ __all__ = [
     "ThresholdsViewModel",
     "ReportsViewModel",
     "RecommendationsViewModel",
+    "DoctorReportsViewModel",
+    "PrescriptionsViewModel",
+    "AIInsightsViewModel",
 ]

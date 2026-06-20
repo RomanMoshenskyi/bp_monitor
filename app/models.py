@@ -43,7 +43,7 @@ def _parse_timestamp(value: str) -> datetime:
 def _row_to_measurement(row: tuple) -> Measurement:
     (
         mid,
-        ts,
+        measured_at,
         systolic,
         diastolic,
         pulse,
@@ -55,7 +55,7 @@ def _row_to_measurement(row: tuple) -> Measurement:
     ) = row
     return Measurement(
         id=mid,
-        timestamp=_format_timestamp(ts),
+        timestamp=_format_timestamp(measured_at),
         systolic=systolic,
         diastolic=diastolic,
         pulse=pulse,

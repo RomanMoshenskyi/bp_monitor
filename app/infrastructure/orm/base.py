@@ -50,11 +50,7 @@ try:
     )
 except Exception as e:
     print(f"Warning: Failed to create engine: {e}")
-    # Ultimate fallback
-    engine = create_engine(
-        "postgresql+psycopg2://postgres:postgres@localhost:5432/bp_monitor",
-        pool_pre_ping=True,
-    )
+    raise
 
 # Session factory
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)

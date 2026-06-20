@@ -32,11 +32,11 @@ class RecommendationsPage(QWidget):
         
         title_layout = QVBoxLayout()
         title = QLabel("Рекомендації")
-        title.setStyleSheet("font-size: 24px; font-weight: bold;")
+        title.setStyleSheet("font-size: 24px; font-weight: 800; color: #0f172a; letter-spacing: -0.5px;")
         title_layout.addWidget(title)
         
         self._subtitle_label = QLabel("Завантаження...")
-        self._subtitle_label.setStyleSheet("color: gray;")
+        self._subtitle_label.setStyleSheet("color: #94a3b8; font-weight: 500;")
         title_layout.addWidget(self._subtitle_label)
         
         header.addLayout(title_layout)
@@ -102,16 +102,16 @@ class RecommendationsPage(QWidget):
         """Update subtitle with unread count."""
         if count > 0:
             self._subtitle_label.setText(f"{count} непрочитаних")
-            self._subtitle_label.setStyleSheet("color: orange; font-weight: bold;")
+            self._subtitle_label.setStyleSheet("color: #f59e0b; font-weight: 700;")
         else:
             self._subtitle_label.setText("Всі рекомендації переглянуто")
-            self._subtitle_label.setStyleSheet("color: green;")
+            self._subtitle_label.setStyleSheet("color: #10b981; font-weight: 600;")
     
     def _update_subtitle(self, total_count: int):
         """Update subtitle with total count."""
         if total_count == 0:
             self._subtitle_label.setText("Немає рекомендацій")
-            self._subtitle_label.setStyleSheet("color: gray;")
+            self._subtitle_label.setStyleSheet("color: #94a3b8; font-weight: 500;")
     
     def _on_loading_changed(self, is_loading: bool):
         """Update loading state."""
@@ -157,13 +157,13 @@ class RecommendationItemWidget(QFrame):
         
         # Color coding based on severity
         severity_colors = {
-            "low": "#e8f5e9",      # Light green
-            "medium": "#fff3e0",    # Light orange
-            "high": "#ffebee",      # Light red
-            "critical": "#ffcdd2",  # Darker red
+            "low": "#ecfdf5",      # Emerald tint
+            "medium": "#fffbeb",    # Amber tint
+            "high": "#fff1f2",      # Rose tint
+            "critical": "#ffe4e6",  # Deeper rose
         }
         bg_color = severity_colors.get(self._rec.severity, "#ffffff")
-        self.setStyleSheet(f"background-color: {bg_color}; border-radius: 5px;")
+        self.setStyleSheet(f"background-color: {bg_color}; border-radius: 12px; border: 1px solid rgba(0,0,0,0.04);")
         
         self._layout = QVBoxLayout(self)
         self._layout.setSpacing(5)
@@ -179,13 +179,13 @@ class RecommendationItemWidget(QFrame):
             "critical": "🔴 Критична",
         }
         severity_label = QLabel(severity_display.get(self._rec.severity, self._rec.severity))
-        severity_label.setStyleSheet("font-weight: bold;")
+        severity_label.setStyleSheet("font-weight: 700; font-size: 12px;")
         header.addWidget(severity_label)
         
         # Category
         if self._rec.category:
             category_label = QLabel(f"[{self._rec.category}]")
-            category_label.setStyleSheet("color: gray;")
+            category_label.setStyleSheet("color: #94a3b8; font-weight: 500; font-size: 11px;")
             header.addWidget(category_label)
         
         header.addStretch()
@@ -194,7 +194,7 @@ class RecommendationItemWidget(QFrame):
         if self._rec.created_at:
             date_text = self._rec.created_at.strftime("%d.%m.%Y %H:%M")
             date_label = QLabel(date_text)
-            date_label.setStyleSheet("color: gray; font-size: 11px;")
+            date_label.setStyleSheet("color: #94a3b8; font-size: 11px; font-weight: 500;")
             header.addWidget(date_label)
         
         self._layout.addLayout(header)
@@ -218,13 +218,13 @@ class RecommendationItemWidget(QFrame):
         
         # Mark as read button
         if not self._rec.is_read:
-            read_btn = QPushButton("✓ Прочитано")
+            read_btn = QPushButton(" Прочитано")
             read_btn.clicked.connect(self._on_mark_read)
             actions.addWidget(read_btn)
         
         # Acknowledge button
         if not self._rec.is_acknowledged:
-            ack_btn = QPushButton("✓✓ Зрозуміло")
+            ack_btn = QPushButton(" Зрозуміло")
             ack_btn.clicked.connect(self._on_acknowledge)
             actions.addWidget(ack_btn)
         
@@ -234,12 +234,12 @@ class RecommendationItemWidget(QFrame):
         if self._rec.is_read or self._rec.is_acknowledged:
             status_text = []
             if self._rec.is_acknowledged:
-                status_text.append("✓✓ Підтверджено")
+                status_text.append(" Підтверджено")
             elif self._rec.is_read:
-                status_text.append("✓ Прочитано")
+                status_text.append(" Прочитано")
             
             status_label = QLabel(" | ".join(status_text))
-            status_label.setStyleSheet("color: green; font-size: 11px;")
+            status_label.setStyleSheet("color: #10b981; font-size: 11px; font-weight: 600;")
             self._layout.addWidget(status_label)
     
     def toggle_expanded(self):

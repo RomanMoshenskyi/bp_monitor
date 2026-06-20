@@ -28,6 +28,33 @@ from PyQt6.QtWidgets import (
     QWidget,
 )
 
+
+def _make_pass_field(placeholder: str = "") -> tuple[QWidget, QLineEdit]:
+    """Create password field with icon and visibility toggle (matches registration style)."""
+    container = QWidget()
+    container.setStyleSheet("background:qlineargradient(x1:0,y1:0,x2:0,y2:1,stop:0 #fafbff,stop:1 #f5f7ff);border:1.5px solid #e2e8f0;border-radius:14px;")
+    row = QHBoxLayout(container); row.setContentsMargins(12, 0, 4, 0); row.setSpacing(0)
+    
+    icon = QLabel("🔐")
+    icon.setFixedWidth(22)
+    icon.setStyleSheet("color:#94a3b8;font-size:14px;background:transparent;")
+    row.addWidget(icon)
+    
+    edit = QLineEdit()
+    edit.setPlaceholderText(placeholder)
+    edit.setEchoMode(QLineEdit.EchoMode.Password)
+    edit.setStyleSheet("QLineEdit{background:transparent;border:none;padding:0 4px;font-size:13.5px;color:#1e293b;min-height:42px;selection-background-color:#c7d2fe;}")
+    row.addWidget(edit, 1)
+    
+    toggle = QPushButton("👁")
+    toggle.setCheckable(True)
+    toggle.setToolTip("Показати / приховати")
+    toggle.setStyleSheet("QPushButton{background:transparent;border:none;color:#94a3b8;font-size:16px;min-width:28px;max-width:28px;min-height:38px;padding:0 2px;}QPushButton:hover{color:#6366f1;}")
+    toggle.toggled.connect(lambda on: (edit.setEchoMode(QLineEdit.EchoMode.Normal if on else QLineEdit.EchoMode.Password), toggle.setText("🔒" if on else "👁")))
+    row.addWidget(toggle)
+    
+    return container, edit
+
 from .analytics import generate_recommendations, measurement_to_row, summary
 from .auth import ROLE_ADMIN, ROLE_DOCTOR, ROLE_PATIENT, AuthService, User
 from .reports import build_doctor_report_html, save_doctor_report
@@ -41,7 +68,7 @@ from .widgets import GlassCard, SectionTitle, TrendChart
 def _panel(title: str = "", spacing: int = 14) -> tuple[QFrame, QVBoxLayout]:
     f = QFrame(); f.setObjectName("panel")
     v = QVBoxLayout(f)
-    v.setContentsMargins(22, 18, 22, 18)
+    v.setContentsMargins(22, 12, 22, 12)
     v.setSpacing(spacing)
     if title:
         v.addWidget(SectionTitle(title))
@@ -72,7 +99,7 @@ def _role_badge(role: str) -> QLabel:
     lbl.setAlignment(Qt.AlignmentFlag.AlignCenter)
     lbl.setStyleSheet(
         f"background:{bg}; color:{fg}; border-radius:10px;"
-        f"padding:3px 10px; font-size:11px; font-weight:700;"
+        f"padding:4px 12px; font-size:10.5px; font-weight:700; letter-spacing:0.3px;"
     )
     return lbl
 
@@ -95,7 +122,7 @@ class DoctorPatientsPage(QWidget):
         banner = QFrame(); banner.setObjectName("topBanner")
         bl = QHBoxLayout(banner); bl.setContentsMargins(24, 18, 24, 18)
         bt = QVBoxLayout(); bt.setSpacing(4)
-        t = QLabel("👥  Список пацієнтів"); t.setObjectName("bannerTitle")
+        t = QLabel("  Список пацієнтів"); t.setObjectName("bannerTitle")
         s = QLabel("Оберіть пацієнта для перегляду вимірювань, аналітики та рекомендацій")
         s.setObjectName("bannerText"); s.setWordWrap(True)
         bt.addWidget(t); bt.addWidget(s)
@@ -106,17 +133,17 @@ class DoctorPatientsPage(QWidget):
         # search + refresh row
         top_row = QHBoxLayout()
         self._search = QLineEdit()
-        self._search.setPlaceholderText("🔍  Пошук за ім'ям або логіном…")
+        self._search.setPlaceholderText("  Пошук за ім'ям або логіном…")
         self._search.textChanged.connect(self._filter)
         refresh_btn = QPushButton("↻  Оновити")
         refresh_btn.setObjectName("secondaryButton")
-        refresh_btn.setFixedWidth(110)
+        refresh_btn.setFixedWidth(130)
         refresh_btn.clicked.connect(self.refresh)
         top_row.addWidget(self._search, 1)
         top_row.addWidget(refresh_btn)
         vl.addLayout(top_row)
 
-        self.table = _styled_table(5, ["👤 ПІБ", "🎂 Вік", "🔑 Логін", "🎯 Цільовий тиск", "📊 Записів"])
+        self.table = _styled_table(5, [" ПІБ", "🎂 Вік", "🔑 Логін", "🎯 Цільовий тиск", " Записів"])
         hdr = self.table.horizontalHeader()
         hdr.setSectionResizeMode(0, QHeaderView.ResizeMode.Stretch)
         hdr.setSectionResizeMode(1, QHeaderView.ResizeMode.ResizeToContents)
@@ -127,7 +154,7 @@ class DoctorPatientsPage(QWidget):
         vl.addWidget(self.table)
 
         btn_row = QHBoxLayout()
-        open_btn = QPushButton("📋  Переглянути дані пацієнта")
+        open_btn = QPushButton("  Переглянути дані пацієнта")
         open_btn.setObjectName("primaryButton")
         open_btn.clicked.connect(self._open_selected)
         btn_row.addStretch(1); btn_row.addWidget(open_btn)
@@ -192,25 +219,25 @@ class DoctorPatientDetailPage(QWidget):
         # stat cards row
         self.cards_row = QHBoxLayout(); self.cards_row.setSpacing(14)
         self._stat_cards = [
-            GlassCard("📋 Записів", "—", "", accent_index=0),
-            GlassCard("🩺 Серед. тиск", "—", "мм рт. ст.", accent_index=3),
+            GlassCard(" Записів", "—", "", accent_index=0),
+            GlassCard(" Серед. тиск", "—", "мм рт. ст.", accent_index=3),
             GlassCard("💓 Серед. пульс", "—", "уд/хв", accent_index=1),
-            GlassCard("📈 Кореляція", "—", "з атм. тиском", accent_index=2),
+            GlassCard(" Кореляція", "—", "з атм. тиском", accent_index=2),
         ]
         for c in self._stat_cards: self.cards_row.addWidget(c)
         layout.addLayout(self.cards_row)
 
         # chart + table
         center = QHBoxLayout(); center.setSpacing(16)
-        chart_panel, cvl = _panel("📈  Тренд (останні 14 вимірювань)")
+        chart_panel, cvl = _panel("  Тренд (останні 14 вимірювань)")
         self.chart = TrendChart()
         cvl.addWidget(self.chart)
         center.addWidget(chart_panel, 3)
         layout.addLayout(center)
 
-        tbl_panel, tvl = _panel("📋  Всі вимірювання")
+        tbl_panel, tvl = _panel("  Всі вимірювання")
         self.table = _styled_table(8,
-            ["📅 Дата", "🩺 Тиск", "💓 Пульс", "🌡 Атм.", "😌 Стан", "💊 Ліки", "🏃 Активність", "📝 Примітки"])
+            [" Дата", " Тиск", "💓 Пульс", "🌡 Атм.", "😌 Стан", " Ліки", "🏃 Активність", " Примітки"])
         hdr = self.table.horizontalHeader()
         hdr.setSectionResizeMode(QHeaderView.ResizeMode.Interactive)
         hdr.setSectionResizeMode(0, QHeaderView.ResizeMode.ResizeToContents)
@@ -221,7 +248,7 @@ class DoctorPatientDetailPage(QWidget):
 
     def set_patient(self, patient: User) -> None:
         self.patient = patient
-        self.patient_title.setText(f"👤  {patient.full_name}")
+        self.patient_title.setText(f"  {patient.full_name}")
         self.patient_subtitle.setText(
             f"Логін: {patient.username}  ·  Вік: {patient.age or '—'}  ·  "
             f"Цільовий тиск: {patient.target_systolic}/{patient.target_diastolic}"
@@ -233,13 +260,13 @@ class DoctorPatientDetailPage(QWidget):
             return
         data = self.storage.get_measurements(self.patient.id)
         stats = summary(data)
-        self._stat_cards[0].update_content("📋 Записів", str(stats["count"]), "")
-        self._stat_cards[1].update_content("🩺 Серед. тиск",
+        self._stat_cards[0].update_content(" Записів", str(stats["count"]), "")
+        self._stat_cards[1].update_content(" Серед. тиск",
             f"{stats['avg_systolic']}/{stats['avg_diastolic']}", "мм рт. ст.")
         avg_p = round(sum(m.pulse for m in data) / max(len(data), 1))
         self._stat_cards[2].update_content("💓 Серед. пульс", str(avg_p), "уд/хв")
         corr = stats["correlation"]
-        self._stat_cards[3].update_content("📈 Кореляція",
+        self._stat_cards[3].update_content(" Кореляція",
             str(corr) if corr is not None else "—", "з атм. тиском")
 
         last = data[-14:]
@@ -289,7 +316,7 @@ class DoctorRecommendationsPage(QWidget):
         # left: write panel
         write_panel, wl = _panel("✍️  Нова рекомендація")
         sel_row = QHBoxLayout()
-        sel_lbl = QLabel("Пацієнт:"); sel_lbl.setStyleSheet("font-weight:600; color:#374151;")
+        sel_lbl = QLabel("Пацієнт:"); sel_lbl.setStyleSheet("font-weight:700; color:#334155; font-size:13px;")
         self.patient_box = QComboBox()
         self.patient_box.currentIndexChanged.connect(lambda *_: self._load_history())
         sel_row.addWidget(sel_lbl); sel_row.addWidget(self.patient_box, 1)
@@ -298,7 +325,8 @@ class DoctorRecommendationsPage(QWidget):
         self.input.setPlaceholderText("Введіть рекомендацію…\n\nНаприклад: знизити вживання солі, збільшити фізичну активність.")
         self.input.setMinimumHeight(120)
         self.input.setStyleSheet(
-            "QTextEdit{background:#fafaff;border:1.5px solid #e0e7ff;border-radius:10px;padding:10px;font-size:13px;}"
+            "QTextEdit{background:qlineargradient(x1:0,y1:0,x2:0,y2:1,stop:0 #fafaff,stop:1 #f5f7ff);"
+            "border:1.5px solid rgba(99,102,241,0.12);border-radius:12px;padding:12px;font-size:13px;color:#334155;}"
         )
         wl.addWidget(self.input)
         save_btn = QPushButton("💾  Зберегти рекомендацію")
@@ -311,7 +339,10 @@ class DoctorRecommendationsPage(QWidget):
         hist_panel, hl = _panel("📜  Історія рекомендацій")
         self.history = QTextEdit(); self.history.setReadOnly(True)
         self.history.setStyleSheet(
-            "QTextEdit{background:#fafaff;border:1.5px solid #e0e7ff;border-radius:10px;padding:10px;font-size:13px;}"
+            "QTextEdit{"
+            "background:qlineargradient(x1:0,y1:0,x2:0,y2:1,stop:0 #ffffff,stop:1 #f8fafc);"
+            "border:1.5px solid rgba(226,232,240,0.6);border-radius:14px;padding:16px;"
+            "font-size:13px;color:#334155;line-height:1.6;}"
         )
         hl.addWidget(self.history)
         main_row.addWidget(hist_panel, 1)
@@ -332,7 +363,16 @@ class DoctorRecommendationsPage(QWidget):
         if not patient:
             self.history.clear(); return
         recs = self.storage.get_doctor_recommendations(patient.id)
-        self.history.setPlainText("\n\n".join(f"• {r}" for r in recs) or "Ще немає рекомендацій.")
+        if not recs:
+            self.history.setHtml("<p style='color:#94a3b8;font-style:italic;'>Ще немає рекомендацій.</p>")
+            return
+        html = ""
+        for i, rec in enumerate(recs, 1):
+            html += f"<div style='background:qlineargradient(x1:0,y1:0,x2:0,y2:1,stop:0 #f8fafc,stop:1 #f1f5f9);border:1px solid #e2e8f0;border-radius:10px;padding:12px;margin-bottom:10px;'>"
+            html += f"<p style='color:#64748b;font-size:11px;font-weight:600;margin:0 0 8px 0;'>Рекомендація #{i}</p>"
+            html += f"<p style='color:#334155;font-size:13px;line-height:1.5;margin:0;'>{rec}</p>"
+            html += "</div>"
+        self.history.setHtml(html)
 
     def _save(self) -> None:
         pid = self.patient_box.currentData()
@@ -374,12 +414,13 @@ class DoctorThresholdsPage(QWidget):
         self.patient_box = QComboBox()
         self.patient_box.currentIndexChanged.connect(lambda *_: self._load_patient())
         refresh_btn = QPushButton("↻"); refresh_btn.setObjectName("secondaryButton")
-        refresh_btn.setFixedWidth(40); refresh_btn.clicked.connect(self.refresh)
+        refresh_btn.setFixedWidth(100); refresh_btn.clicked.connect(self.refresh)
         sel_row.addWidget(self.patient_box, 1); sel_row.addWidget(refresh_btn)
         sl.addLayout(sel_row)
         self.patient_info = QLabel("Оберіть пацієнта зі списку")
         self.patient_info.setStyleSheet(
-            "color:#475569; background:#f8fafc; border-radius:8px; padding:8px 10px; font-size:12px;")
+            "color:#475569; background:qlineargradient(x1:0,y1:0,x2:1,y2:1,stop:0 #fafaff,stop:1 #f0f4ff);"
+            " border:1px solid rgba(99,102,241,0.08); border-radius:10px; padding:10px 12px; font-size:12px; font-weight:500;")
         self.patient_info.setWordWrap(True)
         sl.addWidget(self.patient_info)
         sl.addStretch(1)
@@ -389,18 +430,19 @@ class DoctorThresholdsPage(QWidget):
         form_panel, fl = _panel("⚙️  Цільові показники")
         hint = QLabel("Ці значення використовуються для оцінки відхилень у вимірюваннях пацієнта.")
         hint.setWordWrap(True)
-        hint.setStyleSheet("color:#64748b; font-size:12px; background:#f8fafc; border-radius:8px; padding:8px 10px;")
+        hint.setStyleSheet(
+            "color:#64748b; font-size:12px; font-weight:500;"
+            " background:qlineargradient(x1:0,y1:0,x2:1,y2:1,stop:0 #fafaff,stop:1 #f0f4ff);"
+            " border:1px solid rgba(99,102,241,0.08); border-radius:10px; padding:10px 12px;")
         fl.addWidget(hint)
 
         form = QFormLayout(); form.setVerticalSpacing(10); form.setHorizontalSpacing(16)
         self.p_sys = QSpinBox(); self.p_sys.setRange(80, 200); self.p_sys.setSuffix(" мм рт.ст.")
         self.p_dia = QSpinBox(); self.p_dia.setRange(50, 130); self.p_dia.setSuffix(" мм рт.ст.")
         self.p_pulse = QSpinBox(); self.p_pulse.setRange(40, 150); self.p_pulse.setSuffix(" уд/хв")
-        self.p_age = QSpinBox(); self.p_age.setRange(1, 120)
         form.addRow("🩺 Систолічний:", self.p_sys)
         form.addRow("🩺 Діастолічний:", self.p_dia)
         form.addRow("💓 Пульс:", self.p_pulse)
-        form.addRow("🎂 Вік:", self.p_age)
         fl.addLayout(form)
 
         save_btn = QPushButton("💾  Зберегти для пацієнта")
@@ -430,7 +472,6 @@ class DoctorThresholdsPage(QWidget):
         self.p_sys.setValue(patient.target_systolic)
         self.p_dia.setValue(patient.target_diastolic)
         self.p_pulse.setValue(patient.target_pulse)
-        self.p_age.setValue(patient.age or 30)
 
     def _save_patient(self) -> None:
         pid = self.patient_box.currentData()
@@ -439,7 +480,7 @@ class DoctorThresholdsPage(QWidget):
             QMessageBox.warning(self, "Увага", "Оберіть пацієнта."); return
         self._auth.update_user_thresholds(
             patient.id, self.p_sys.value(), self.p_dia.value(),
-            self.p_pulse.value(), self.p_age.value())
+            self.p_pulse.value(), patient.age)
         self._load_patient()
         QMessageBox.information(self, "Готово", "Пороги пацієнта оновлено.")
 
@@ -469,10 +510,13 @@ class DoctorReportPage(QWidget):
             "Якщо пацієнт не обраний, спочатку перейдіть на вкладку «Пацієнти» та оберіть його."
         )
         desc.setWordWrap(True)
-        desc.setStyleSheet("color:#475569; font-size:13px; background:#f8fafc; border-radius:8px; padding:10px 12px;")
+        desc.setStyleSheet(
+            "color:#475569; font-size:13px; font-weight:500;"
+            " background:qlineargradient(x1:0,y1:0,x2:1,y2:1,stop:0 #fafaff,stop:1 #f0f4ff);"
+            " border:1px solid rgba(99,102,241,0.08); border-radius:10px; padding:12px 14px;")
         vl.addWidget(desc)
 
-        btn = QPushButton("📥  Згенерувати та зберегти HTML-звіт")
+        btn = QPushButton("  Згенерувати та зберегти HTML-звіт")
         btn.setObjectName("primaryButton"); btn.clicked.connect(self._generate)
         vl.addWidget(btn)
         vl.addStretch(1)
@@ -525,15 +569,18 @@ class DoctorProfilePage(QWidget):
         form = QFormLayout(); form.setVerticalSpacing(10); form.setHorizontalSpacing(16)
 
         self.username_lbl = QLabel()
-        self.username_lbl.setStyleSheet("color:#4f46e5; font-weight:600;")
+        self.username_lbl.setStyleSheet("color:#6366f1; font-weight:700; font-size:13px;")
         self.full_name_edit = QLineEdit()
         self.full_name_edit.setPlaceholderText("Прізвище Ім'я По батькові")
+        self.full_name_edit.setMinimumWidth(300)
         self.email_edit = QLineEdit()
         self.email_edit.setPlaceholderText("example@mail.com  (необов'язково)")
+        self.email_edit.setMinimumWidth(300)
         self.age_spin = QSpinBox()
         self.age_spin.setRange(0, 120)
         self.age_spin.setSpecialValueText("—")
         self.age_spin.setValue(0)
+        self.age_spin.setMinimumWidth(120)
 
         form.addRow("Логін:", self.username_lbl)
         form.addRow("ПІБ:", self.full_name_edit)
@@ -552,16 +599,13 @@ class DoctorProfilePage(QWidget):
         pass_panel, pl = _panel("🔒  Зміна пароля")
         pform = QFormLayout(); pform.setVerticalSpacing(10); pform.setHorizontalSpacing(16)
 
-        self.cur_pass = QLineEdit(); self.cur_pass.setEchoMode(QLineEdit.EchoMode.Password)
-        self.cur_pass.setPlaceholderText("Поточний пароль")
-        self.new_pass = QLineEdit(); self.new_pass.setEchoMode(QLineEdit.EchoMode.Password)
-        self.new_pass.setPlaceholderText("Мін. 8 символів")
-        self.conf_pass = QLineEdit(); self.conf_pass.setEchoMode(QLineEdit.EchoMode.Password)
-        self.conf_pass.setPlaceholderText("Повторіть новий пароль")
+        cur_pass_widget, self.cur_pass = _make_pass_field("Поточний пароль")
+        new_pass_widget, self.new_pass = _make_pass_field("Мін. 8 символів")
+        conf_pass_widget, self.conf_pass = _make_pass_field("Повторіть новий пароль")
 
-        pform.addRow("Поточний пароль:", self.cur_pass)
-        pform.addRow("Новий пароль:", self.new_pass)
-        pform.addRow("Підтвердження:", self.conf_pass)
+        pform.addRow("Поточний пароль:", cur_pass_widget)
+        pform.addRow("Новий пароль:", new_pass_widget)
+        pform.addRow("Підтвердження:", conf_pass_widget)
         pl.addLayout(pform)
 
         change_btn = QPushButton("🔑  Змінити пароль")
@@ -627,12 +671,13 @@ class DoctorProfilePage(QWidget):
 class _EditUserDialog(QWidget):
     def __init__(self, user: User, auth: AuthService, parent=None):
         super().__init__(parent, Qt.WindowType.Dialog)
-        self.setWindowTitle(f"✏️  Редагувати: {user.username}")
+        self.setWindowTitle(f"️  Редагувати: {user.username}")
         self.setMinimumWidth(440)
         self._auth = auth
         self._user = user
         self.setStyleSheet(
-            "QWidget { background:#f1f5fb; font-family:'Segoe UI Variable Display','Segoe UI',sans-serif; }"
+            "QWidget { background:qlineargradient(x1:0,y1:0,x2:0,y2:1,stop:0 #f8fafc,stop:1 #f1f5f9);"
+            " font-family:'SF Pro Display','Segoe UI Variable Display','Segoe UI','Inter',sans-serif; }"
         )
 
         root = QVBoxLayout(self)
@@ -673,18 +718,19 @@ class _EditUserDialog(QWidget):
         btn_row = QHBoxLayout()
         save_btn = QPushButton("💾  Зберегти")
         save_btn.setStyleSheet(
-            "QPushButton{background:qlineargradient(x1:0,y1:0,x2:1,y2:0,"
-            "stop:0 #6366f1,stop:1 #7c3aed);color:white;border:none;border-radius:10px;"
-            "font-size:13px;font-weight:700;min-height:38px;padding:0 20px;}"
+            "QPushButton{background:qlineargradient(x1:0,y1:0,x2:1,y2:1,"
+            "stop:0 #6366f1,stop:0.5 #7c3aed,stop:1 #8b5cf6);color:white;border:none;border-radius:12px;"
+            "font-size:13px;font-weight:700;min-height:40px;padding:0 22px;letter-spacing:0.2px;}"
             "QPushButton:hover{background:qlineargradient(x1:0,y1:0,x2:1,y2:0,"
             "stop:0 #4f46e5,stop:1 #6d28d9);}"
         )
         save_btn.clicked.connect(self._save)
         cancel_btn = QPushButton("Скасувати")
         cancel_btn.setStyleSheet(
-            "QPushButton{background:#f1f5f9;color:#475569;border:1.5px solid #e2e8f0;"
-            "border-radius:10px;font-size:13px;min-height:38px;padding:0 20px;}"
-            "QPushButton:hover{background:#e2e8f0;}"
+            "QPushButton{background:qlineargradient(x1:0,y1:0,x2:0,y2:1,stop:0 #f8fafc,stop:1 #f1f5f9);"
+            "color:#475569;border:1.5px solid rgba(226,232,240,0.65);"
+            "border-radius:12px;font-size:13px;min-height:40px;padding:0 22px;font-weight:600;}"
+            "QPushButton:hover{background:#eef2ff;border-color:rgba(99,102,241,0.2);color:#4f46e5;}"
         )
         cancel_btn.clicked.connect(self.close)
         btn_row.addWidget(save_btn); btn_row.addWidget(cancel_btn)
@@ -732,16 +778,16 @@ class AdminUsersPage(QWidget):
         main_row = QHBoxLayout(); main_row.setSpacing(16)
 
         # ── left: users table ─────────────────────────────────────────────
-        tbl_panel, tvl = _panel("👥  Список користувачів")
+        tbl_panel, tvl = _panel("  Список користувачів")
         search_row = QHBoxLayout()
-        self._search = QLineEdit(); self._search.setPlaceholderText("🔍  Пошук…")
+        self._search = QLineEdit(); self._search.setPlaceholderText("  Пошук…")
         self._search.textChanged.connect(self._filter)
         refresh_btn = QPushButton("↻  Оновити"); refresh_btn.setObjectName("secondaryButton")
-        refresh_btn.setFixedWidth(110); refresh_btn.clicked.connect(self.refresh)
+        refresh_btn.setFixedWidth(130); refresh_btn.clicked.connect(self.refresh)
         search_row.addWidget(self._search, 1); search_row.addWidget(refresh_btn)
         tvl.addLayout(search_row)
 
-        self.table = _styled_table(6, ["👤 ПІБ", "🔑 Логін", "📧 Email", "🏷 Роль", "🎂 Вік", "🔘 Статус"])
+        self.table = _styled_table(6, [" ПІБ", "🔑 Логін", "📧 Email", "🏷 Роль", "🎂 Вік", "🔘 Статус"])
         hdr = self.table.horizontalHeader()
         hdr.setSectionResizeMode(0, QHeaderView.ResizeMode.Stretch)
         hdr.setSectionResizeMode(1, QHeaderView.ResizeMode.ResizeToContents)
@@ -752,7 +798,7 @@ class AdminUsersPage(QWidget):
         tvl.addWidget(self.table)
 
         act_row = QHBoxLayout()
-        edit_btn = QPushButton("✏️  Редагувати"); edit_btn.setObjectName("secondaryButton")
+        edit_btn = QPushButton("️  Редагувати"); edit_btn.setObjectName("secondaryButton")
         edit_btn.clicked.connect(self._edit_selected)
         self.toggle_btn = QPushButton("🚫  Деактивувати"); self.toggle_btn.setObjectName("dangerButton")
         self.toggle_btn.clicked.connect(self._toggle_selected)
@@ -761,7 +807,7 @@ class AdminUsersPage(QWidget):
         main_row.addWidget(tbl_panel, 3)
 
         # ── right: add user form ──────────────────────────────────────────
-        add_panel, al = _panel("➕  Додати користувача")
+        add_panel, al = _panel("+  Додати користувача")
         form = QFormLayout(); form.setVerticalSpacing(10); form.setHorizontalSpacing(16)
         self.new_login = QLineEdit(); self.new_login.setPlaceholderText("Обов'язково")
         self.new_pass  = QLineEdit(); self.new_pass.setPlaceholderText("Мін. 8 символів, велика+цифра")
@@ -780,7 +826,7 @@ class AdminUsersPage(QWidget):
         form.addRow("Вік:", self.new_age)
         form.addRow("Роль:", self.new_role)
         al.addLayout(form)
-        add_btn = QPushButton("➕  Додати користувача"); add_btn.setObjectName("primaryButton")
+        add_btn = QPushButton("+  Додати користувача"); add_btn.setObjectName("primaryButton")
         add_btn.clicked.connect(self._add_user)
         al.addWidget(add_btn); al.addStretch(1)
         main_row.addWidget(add_panel, 2)
@@ -797,7 +843,7 @@ class AdminUsersPage(QWidget):
             row_bg = QColor("#f8faff") if i % 2 else QColor("#ffffff")
             vals = [u.full_name, u.username, u.email or "—", u.role_label,
                     str(u.age) if u.age else "—",
-                    "✅ Активний" if u.is_active else "🚫 Заблокований"]
+                    " Активний" if u.is_active else "🚫 Заблокований"]
             for c, v in enumerate(vals):
                 item = QTableWidgetItem(v)
                 item.setTextAlignment(Qt.AlignmentFlag.AlignCenter if c > 0
@@ -862,7 +908,7 @@ class AdminThresholdsPage(QWidget):
         banner = QFrame(); banner.setObjectName("topBanner")
         bl = QHBoxLayout(banner); bl.setContentsMargins(24, 18, 24, 18)
         bt = QVBoxLayout(); bt.setSpacing(4)
-        t = QLabel("⚙️  Глобальні порогові значення"); t.setObjectName("bannerTitle")
+        t = QLabel("  Глобальні порогові значення"); t.setObjectName("bannerTitle")
         s = QLabel("Системні ліміти АТ та пульсу, що застосовуються для всіх пацієнтів за замовчуванням.")
         s.setObjectName("bannerText"); s.setWordWrap(True)
         bt.addWidget(t); bt.addWidget(s); bl.addLayout(bt, 1)
@@ -871,7 +917,7 @@ class AdminThresholdsPage(QWidget):
         main_row = QHBoxLayout(); main_row.setSpacing(16)
 
         # systolic panel
-        sp, sl = _panel("🩺  Систолічний тиск")
+        sp, sl = _panel("  Систолічний тиск")
         sf = QFormLayout(); sf.setVerticalSpacing(10); sf.setHorizontalSpacing(16)
         self.sys_high = QSpinBox(); self.sys_high.setRange(100, 220); self.sys_high.setSuffix(" мм рт.ст.")
         self.sys_low  = QSpinBox(); self.sys_low.setRange(60, 150);   self.sys_low.setSuffix(" мм рт.ст.")
@@ -881,7 +927,7 @@ class AdminThresholdsPage(QWidget):
         main_row.addWidget(sp)
 
         # diastolic panel
-        dp, dl = _panel("🩺  Діастолічний тиск")
+        dp, dl = _panel("  Діастолічний тиск")
         df = QFormLayout(); df.setVerticalSpacing(10); df.setHorizontalSpacing(16)
         self.dia_high = QSpinBox(); self.dia_high.setRange(60, 150); self.dia_high.setSuffix(" мм рт.ст.")
         self.dia_low  = QSpinBox(); self.dia_low.setRange(40, 100);  self.dia_low.setSuffix(" мм рт.ст.")
@@ -938,8 +984,10 @@ class PatientRecommendationsView(QWidget):
         bl = QHBoxLayout(banner); bl.setContentsMargins(24, 18, 24, 18); bl.setSpacing(20)
         icon_lbl = QLabel("💬")
         icon_lbl.setStyleSheet(
-            "font-size:38px; background:rgba(99,102,241,0.12); border-radius:14px;"
-            "padding:6px 12px;"
+            "font-size:38px;"
+            " background:qlineargradient(x1:0,y1:0,x2:1,y2:1,stop:0 rgba(99,102,241,0.15),stop:1 rgba(139,92,246,0.1));"
+            " border:1px solid rgba(255,255,255,0.08);"
+            " border-radius:16px; padding:8px 14px;"
         )
         info_col = QVBoxLayout(); info_col.setSpacing(4)
         title_lbl = QLabel("Рекомендації лікаря"); title_lbl.setObjectName("bannerTitle")
@@ -951,7 +999,7 @@ class PatientRecommendationsView(QWidget):
         info_col.addWidget(title_lbl); info_col.addWidget(sub_lbl)
         refresh_btn = QPushButton("↻  Оновити")
         refresh_btn.setObjectName("secondaryButton")
-        refresh_btn.setFixedWidth(110)
+        refresh_btn.setFixedWidth(130)
         refresh_btn.clicked.connect(self.refresh)
         bl.addWidget(icon_lbl); bl.addLayout(info_col, 1); bl.addWidget(refresh_btn)
         layout.addWidget(banner)
@@ -959,7 +1007,7 @@ class PatientRecommendationsView(QWidget):
         # scrollable card area
         scroll = QScrollArea(); scroll.setWidgetResizable(True)
         scroll.setFrameShape(QFrame.Shape.NoFrame)
-        scroll.setStyleSheet("QScrollArea { background: transparent; border: none; }")
+        scroll.setStyleSheet("QScrollArea { background: transparent; border: none; border-radius: 0px; }")
         self._cards_widget = QWidget()
         self._cards_widget.setStyleSheet("background: transparent;")
         self._cards_layout = QVBoxLayout(self._cards_widget)
@@ -981,15 +1029,15 @@ class PatientRecommendationsView(QWidget):
         if not recs:
             empty = QFrame()
             empty.setStyleSheet(
-                "QFrame { background: #fafaff; border: 1.5px dashed #c7d2fe;"
-                " border-radius: 16px; }"
+                "QFrame { background: qlineargradient(x1:0,y1:0,x2:1,y2:1,stop:0 #fafaff,stop:1 #f5f7ff);"
+                " border: 1.5px dashed rgba(99,102,241,0.2); border-radius: 18px; }"
             )
             ev = QVBoxLayout(empty); ev.setContentsMargins(40, 40, 40, 40); ev.setSpacing(10)
             ev.setAlignment(Qt.AlignmentFlag.AlignCenter)
             icon = QLabel("🩺"); icon.setStyleSheet("font-size:40px; background:transparent;")
             icon.setAlignment(Qt.AlignmentFlag.AlignCenter)
             msg = QLabel("Поки що лікар не залишив рекомендацій.\nВони з'являться тут, як тільки лікар їх додасть.")
-            msg.setStyleSheet("color:#94a3b8; font-size:13px; background:transparent;")
+            msg.setStyleSheet("color:#94a3b8; font-size:13px; font-weight:500; background:transparent;")
             msg.setAlignment(Qt.AlignmentFlag.AlignCenter); msg.setWordWrap(True)
             ev.addWidget(icon); ev.addWidget(msg)
             self._cards_layout.insertWidget(0, empty)

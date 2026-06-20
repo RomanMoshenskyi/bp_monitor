@@ -8,6 +8,8 @@ from .recommendation_service import RecommendationService
 from .report_service import ReportService
 from .access_control import AccessControl
 from .weather_service import WeatherService
+from .doctor_report_service import DoctorReportService
+from .prescription_service import PrescriptionService
 
 __all__ = [
     "MonitoringService",
@@ -17,4 +19,6 @@ __all__ = [
     "ReportService",
     "AccessControl",
     "WeatherService",
+    "DoctorReportService",
+    "PrescriptionService",
 ]

@@ -5,14 +5,13 @@ import sys
 from pathlib import Path
 from typing import List
 
-from PyQt6.QtCore import QEasingCurve, QPropertyAnimation
+from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QIcon
 from PyQt6.QtWidgets import (
     QApplication,
     QButtonGroup,
     QFileDialog,
     QFrame,
-    QGraphicsOpacityEffect,
     QHBoxLayout,
     QLabel,
     QMainWindow,
@@ -20,6 +19,7 @@ from PyQt6.QtWidgets import (
     QPushButton,
     QScrollArea,
     QStackedWidget,
+    QToolButton,
     QVBoxLayout,
     QWidget,
 )
@@ -43,391 +43,16 @@ from .models import Measurement
 from .storage import check_database_connection, create_storage
 from .ui import (
     AnalyticsPage, DashboardPage, MeasurementsPage, SettingsPage,
+    DoctorMedicalReportsPage, DoctorPrescriptionsPage, PatientPrescriptionsPage,
+    AIInsightsPage, AdminDashboardPage, AdminAuditLogPage, AdminMedicationsPage,
+    AdminPrescriptionsPage, AdminMeasurementsPage,
 )
+from .presentation.view_models import DoctorReportsViewModel, PrescriptionsViewModel, AIInsightsViewModel
+from .ui.modern_styles import get_stylesheet
+from .infrastructure.orm.base import SessionLocal
 
 _log = get_logger(__name__)
 
-APP_STYLE = """
-/* ═══════════════════════════════════════════════════════
-   PulseView — Premium UI  (Segoe UI Variable / Segoe UI)
-   ═══════════════════════════════════════════════════════ */
-
-/* ── Global ──────────────────────────────────────────── */
-QMainWindow, QWidget {
-    background: #f1f5fb;
-    color: #1e293b;
-    font-family: 'Segoe UI Variable Display', 'Segoe UI', 'SF Pro Display', system-ui, sans-serif;
-    font-size: 13px;
-}
-
-/* ── Sidebar ─────────────────────────────────────────── */
-QFrame#sidebar {
-    background: qlineargradient(x1:0, y1:0, x2:0.6, y2:1,
-        stop:0 #0d1224, stop:0.55 #1a1754, stop:1 #2d267a);
-    border-radius: 22px;
-}
-QFrame#sidebar QWidget, QFrame#sidebar QLabel { background: transparent; }
-QLabel#brandTitle {
-    color: #ffffff;
-    font-size: 21px;
-    font-weight: 700;
-    letter-spacing: 0.3px;
-    background: transparent;
-}
-QLabel#brandSubtitle {
-    color: rgba(196,181,253,0.80);
-    font-size: 11.5px;
-    background: transparent;
-}
-QFrame#navDivider {
-    background: rgba(255,255,255,0.07);
-    max-height: 1px;
-    border: none;
-}
-QLabel#navSectionLabel {
-    color: rgba(148,163,184,0.6);
-    font-size: 10px;
-    font-weight: 700;
-    letter-spacing: 1.2px;
-    background: transparent;
-    padding: 0 4px;
-}
-
-/* ── Nav buttons ─────────────────────────────────────── */
-QPushButton#navButton {
-    text-align: left;
-    color: rgba(196,181,253,0.75);
-    background: transparent;
-    border: none;
-    padding: 10px 14px;
-    border-radius: 12px;
-    font-size: 13px;
-    font-weight: 500;
-}
-QPushButton#navButton:hover {
-    background: rgba(255,255,255,0.07);
-    color: rgba(255,255,255,0.92);
-}
-QPushButton#navButton:checked {
-    background: qlineargradient(x1:0,y1:0,x2:1,y2:0,
-        stop:0 rgba(99,102,241,0.50), stop:1 rgba(124,58,237,0.35));
-    color: #fff;
-    font-weight: 650;
-    border-left: 3px solid #818cf8;
-    padding-left: 11px;
-}
-QPushButton#navButton:checked:hover {
-    background: qlineargradient(x1:0,y1:0,x2:1,y2:0,
-        stop:0 rgba(99,102,241,0.65), stop:1 rgba(124,58,237,0.50));
-}
-
-/* ── Page header ─────────────────────────────────────── */
-QLabel#pageTitle {
-    font-size: 23px;
-    font-weight: 700;
-    color: #0f172a;
-}
-QLabel#pageSubtitle {
-    font-size: 12px;
-    color: #64748b;
-}
-
-/* ── Banner ──────────────────────────────────────────── */
-QFrame#topBanner {
-    background: qlineargradient(x1:0, y1:0, x2:1, y2:1,
-        stop:0 #eef2ff, stop:1 #dbeafe);
-    border: 1px solid rgba(99,102,241,0.14);
-    border-radius: 18px;
-}
-QLabel#bannerTitle { font-size: 18px; font-weight: 700; color: #1e1b4b; }
-QLabel#bannerText  { color: #475569; font-size: 13px; }
-
-/* ── Stat cards ──────────────────────────────────────── */
-QFrame#glassCard {
-    background: #ffffff;
-    border: 1px solid #e8edf5;
-    border-radius: 18px;
-}
-QLabel#cardTitle {
-    color: #64748b;
-    font-size: 10.5px;
-    font-weight: 700;
-    letter-spacing: 0.8px;
-}
-QLabel#cardValue {
-    color: #0f172a;
-    font-size: 30px;
-    font-weight: 700;
-}
-QLabel#cardSubtitle { color: #94a3b8; font-size: 11px; }
-
-/* ── Section titles ──────────────────────────────────── */
-QLabel#sectionTitle {
-    color: #0f172a;
-    font-size: 15px;
-    font-weight: 700;
-}
-
-/* ── Panels ──────────────────────────────────────────── */
-QFrame#panel {
-    background: #ffffff;
-    border: 1px solid #e8edf5;
-    border-radius: 18px;
-}
-
-/* ── Primary button ──────────────────────────────────── */
-QPushButton#primaryButton {
-    background: qlineargradient(x1:0,y1:0,x2:1,y2:0,
-        stop:0 #6366f1, stop:1 #7c3aed);
-    color: #fff;
-    border: none;
-    border-radius: 11px;
-    padding: 9px 20px;
-    font-weight: 700;
-    font-size: 13px;
-    min-height: 36px;
-}
-QPushButton#primaryButton:hover {
-    background: qlineargradient(x1:0,y1:0,x2:1,y2:0,
-        stop:0 #4f46e5, stop:1 #6d28d9);
-}
-QPushButton#primaryButton:pressed { background: #4338ca; }
-QPushButton#primaryButton:disabled { background: #c7d2fe; color: #e0e7ff; }
-
-/* ── Secondary button ────────────────────────────────── */
-QPushButton#secondaryButton {
-    background: #fff;
-    color: #374151;
-    border: 1.5px solid #e2e8f0;
-    border-radius: 11px;
-    padding: 8px 16px;
-    font-weight: 600;
-    font-size: 13px;
-    min-height: 34px;
-}
-QPushButton#secondaryButton:hover {
-    background: #f5f3ff;
-    border-color: #a5b4fc;
-    color: #4f46e5;
-}
-QPushButton#secondaryButton:pressed { background: #ede9fe; }
-
-/* ── Danger button ───────────────────────────────────── */
-QPushButton#dangerButton {
-    background: #fff1f2;
-    color: #e11d48;
-    border: 1.5px solid #fecdd3;
-    border-radius: 11px;
-    padding: 8px 16px;
-    font-weight: 600;
-    font-size: 13px;
-    min-height: 34px;
-}
-QPushButton#dangerButton:hover {
-    background: #ffe4e6;
-    border-color: #fda4af;
-    color: #be123c;
-}
-
-/* ── Form labels ─────────────────────────────────────── */
-QLabel {
-    color: #374151;
-}
-QFormLayout QLabel {
-    font-size: 12.5px;
-    font-weight: 600;
-    color: #374151;
-    padding-top: 2px;
-}
-
-/* ── Inputs ──────────────────────────────────────────── */
-QLineEdit, QTextEdit, QSpinBox, QComboBox {
-    background: #f8fafc;
-    border: 1.5px solid #e2e8f0;
-    border-radius: 9px;
-    padding: 7px 12px;
-    color: #1e293b;
-    font-size: 13px;
-    min-height: 32px;
-    selection-background-color: #c7d2fe;
-}
-QLineEdit:focus, QTextEdit:focus, QSpinBox:focus, QComboBox:focus {
-    border-color: #6366f1;
-    background: #fafaff;
-    outline: none;
-}
-QLineEdit:hover:!focus, QSpinBox:hover:!focus, QComboBox:hover:!focus {
-    border-color: #a5b4fc;
-}
-QLineEdit::placeholder, QTextEdit::placeholder { color: #94a3b8; }
-QComboBox {
-    padding-right: 30px;
-}
-QComboBox::drop-down {
-    subcontrol-origin: padding;
-    subcontrol-position: top right;
-    width: 28px;
-    border: none;
-    border-left: 1.5px solid #e2e8f0;
-    border-top-right-radius: 9px;
-    border-bottom-right-radius: 9px;
-    background: #f0f4ff;
-}
-QComboBox::down-arrow {
-    width: 0; height: 0;
-    border-left: 5px solid transparent;
-    border-right: 5px solid transparent;
-    border-top: 6px solid #6366f1;
-}
-QComboBox::down-arrow:on {
-    border-top: none;
-    border-bottom: 6px solid #6366f1;
-}
-QComboBox QAbstractItemView {
-    background: white;
-    border: 1.5px solid #c7d2fe;
-    border-radius: 10px;
-    padding: 4px;
-    selection-background-color: #eef2ff;
-    selection-color: #4f46e5;
-    outline: none;
-}
-QSpinBox::up-button, QSpinBox::down-button {
-    width: 22px;
-    border-radius: 5px;
-    background: transparent;
-}
-QSpinBox::up-button:hover, QSpinBox::down-button:hover { background: #eef2ff; }
-
-/* ── DateTimeEdit ────────────────────────────────────── */
-QDateTimeEdit {
-    background: #f8fafc;
-    border: 1.5px solid #e2e8f0;
-    border-radius: 9px;
-    padding: 7px 12px;
-    color: #1e293b;
-    font-size: 13px;
-    min-height: 32px;
-}
-QDateTimeEdit:focus   { border-color: #6366f1; background: #fafaff; }
-QDateTimeEdit:hover:!focus { border-color: #a5b4fc; }
-QDateTimeEdit::drop-down {
-    subcontrol-origin: padding;
-    subcontrol-position: top right;
-    width: 28px;
-    border: none;
-    border-left: 1.5px solid #e2e8f0;
-    border-top-right-radius: 9px;
-    border-bottom-right-radius: 9px;
-    background: #f0f4ff;
-}
-QDateTimeEdit::down-arrow {
-    width: 0; height: 0;
-    border-left: 5px solid transparent;
-    border-right: 5px solid transparent;
-    border-top: 6px solid #6366f1;
-}
-
-/* ── Table ───────────────────────────────────────────── */
-QTableWidget {
-    background: white;
-    border-radius: 14px;
-    border: 1px solid #e8edf5;
-    gridline-color: transparent;
-    selection-background-color: #eef2ff;
-    selection-color: #3730a3;
-    outline: none;
-    font-size: 13px;
-    alternate-background-color: #f8faff;
-}
-QTableWidget::item {
-    padding: 0 12px;
-    border: none;
-    border-bottom: 1px solid #f1f5f9;
-    min-height: 40px;
-}
-QTableWidget::item:hover  { background: #f0f4ff; }
-QTableWidget::item:selected {
-    background: #eef2ff;
-    color: #3730a3;
-    border-left: 3px solid #6366f1;
-}
-QHeaderView { background: transparent; }
-QHeaderView::section {
-    background: #f8fafc;
-    color: #6366f1;
-    padding: 11px 12px;
-    border: none;
-    border-bottom: 2px solid #e0e7ff;
-    font-weight: 700;
-    font-size: 11.5px;
-    letter-spacing: 0.5px;
-}
-QHeaderView::section:first { border-top-left-radius: 14px; }
-QHeaderView::section:last  { border-top-right-radius: 14px; }
-
-/* ── Tabs ────────────────────────────────────────────── */
-QTabWidget::pane {
-    border: 1.5px solid #e2e8f0;
-    border-radius: 14px;
-    background: white;
-    top: -2px;
-}
-QTabBar::tab {
-    background: transparent;
-    color: #64748b;
-    padding: 9px 22px;
-    font-weight: 600;
-    font-size: 13px;
-    border: none;
-    border-bottom: 2px solid transparent;
-    margin-right: 4px;
-}
-QTabBar::tab:hover { color: #6366f1; }
-QTabBar::tab:selected {
-    color: #6366f1;
-    border-bottom: 2.5px solid #6366f1;
-    font-weight: 700;
-}
-
-/* ── Scrollbars ──────────────────────────────────────── */
-QScrollBar:vertical {
-    background: transparent; width: 7px; margin: 6px 2px;
-}
-QScrollBar::handle:vertical {
-    background: #dde3ed; border-radius: 3px; min-height: 28px;
-}
-QScrollBar::handle:vertical:hover { background: #94a3b8; }
-QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical { height: 0; }
-QScrollBar:horizontal { background: transparent; height: 7px; margin: 2px 6px; }
-QScrollBar::handle:horizontal {
-    background: #dde3ed; border-radius: 3px; min-width: 28px;
-}
-QScrollBar::handle:horizontal:hover { background: #94a3b8; }
-QScrollBar::add-line:horizontal, QScrollBar::sub-line:horizontal { width: 0; }
-
-/* ── Misc ────────────────────────────────────────────── */
-QScrollArea  { border: none; background: transparent; }
-QCheckBox { spacing: 8px; font-size: 13px; }
-QCheckBox::indicator {
-    width: 18px; height: 18px;
-    border: 1.5px solid #c7d2fe;
-    border-radius: 5px;
-    background: white;
-}
-QCheckBox::indicator:hover   { border-color: #818cf8; }
-QCheckBox::indicator:checked {
-    background: #6366f1;
-    border-color: #6366f1;
-}
-QToolTip {
-    background: #1e293b; color: white;
-    border: none; border-radius: 8px;
-    padding: 6px 10px; font-size: 12px;
-}
-QMessageBox { background: white; }
-QMessageBox QPushButton { min-width: 80px; }
-"""
 
 
 class MainWindow(QMainWindow):
@@ -436,14 +61,14 @@ class MainWindow(QMainWindow):
         self.user = user
         self.selected_patient: User | None = None
         self.setWindowTitle(f"PulseView — {user.full_name} ({user.role_label})")
-        self.resize(1440, 880)
-        self.setMinimumSize(1100, 700)
+        self.resize(1280, 800)
+        self.setMinimumSize(900, 600)
         self.storage = create_storage(user)
         self.data = self.storage.load()
         self.measurements = self.storage.get_measurements()
         self._page_titles: list[tuple[str, str]] = []
 
-        self.setStyleSheet(APP_STYLE)
+        self.setStyleSheet(get_stylesheet())
         self._build_ui()
         self._load_profile()
         self.refresh_all()
@@ -452,26 +77,64 @@ class MainWindow(QMainWindow):
         root = QWidget()
         self.setCentralWidget(root)
         root_layout = QHBoxLayout(root)
-        root_layout.setContentsMargins(18, 18, 18, 18)
-        root_layout.setSpacing(18)
+        root_layout.setContentsMargins(24, 24, 24, 24)
+        root_layout.setSpacing(20)
 
-        sidebar = QFrame()
-        sidebar.setObjectName("sidebar")
-        sidebar.setFixedWidth(260)
-        side_layout = QVBoxLayout(sidebar)
-        side_layout.setContentsMargins(16, 28, 16, 20)
+        # Sidebar
+        self.sidebar = QFrame()
+        self.sidebar.setObjectName("sidebar")
+        self.sidebar.setMinimumWidth(200)
+        self.sidebar.setMaximumWidth(300)
+        self._sidebar_expanded_width = 260
+        self._sidebar_collapsed_width = 70
+        self._sidebar_collapsed = False
+        side_layout = QVBoxLayout(self.sidebar)
+        side_layout.setContentsMargins(16, 20, 16, 20)
         side_layout.setSpacing(4)
+        
+        # Collapse/expand button in header
+        self._collapse_btn = QToolButton()
+        self._collapse_btn.setText("◀")
+        self._collapse_btn.setToolTip("Згорнути меню")
+        self._collapse_btn.setStyleSheet("""
+            QToolButton {
+                background: rgba(255,255,255,0.08);
+                color: rgba(196,181,253,0.85);
+                border: 1px solid rgba(255,255,255,0.1);
+                border-radius: 6px;
+                padding: 2px 6px;
+                font-size: 11px;
+                font-weight: bold;
+                min-width: 24px;
+                min-height: 24px;
+            }
+            QToolButton:hover {
+                background: rgba(255,255,255,0.15);
+                color: white;
+                border: 1px solid rgba(255,255,255,0.2);
+            }
+        """)
+        self._collapse_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        self._collapse_btn.clicked.connect(self._toggle_sidebar)
 
-        brand = QVBoxLayout()
-        brand.setSpacing(2)
-        brand_title = QLabel("💓  PulseView")
-        brand_title.setObjectName("brandTitle")
-        brand_subtitle = QLabel(self.user.full_name)
-        brand_subtitle.setObjectName("brandSubtitle")
-        brand_subtitle.setWordWrap(True)
-        brand.addWidget(brand_title)
-        brand.addWidget(brand_subtitle)
-        side_layout.addLayout(brand)
+        self._brand_layout = QHBoxLayout()
+        self._brand_layout.setSpacing(8)
+        self._brand_layout.setContentsMargins(0, 0, 0, 0)
+        
+        # Logo instead of emoji
+        self.brand_title = QLabel("PulseView")
+        self.brand_title.setObjectName("brandTitle")
+        
+        self._brand_layout.addWidget(self.brand_title)
+        self._brand_layout.addStretch()
+        self._brand_layout.addWidget(self._collapse_btn)
+        side_layout.addLayout(self._brand_layout)
+        
+        # Subtitle below logo
+        self.brand_subtitle = QLabel(self.user.full_name)
+        self.brand_subtitle.setObjectName("brandSubtitle")
+        self.brand_subtitle.setWordWrap(True)
+        side_layout.addWidget(self.brand_subtitle)
         side_layout.addSpacing(16)
         # divider
         div = QFrame()
@@ -511,14 +174,14 @@ class MainWindow(QMainWindow):
         side_layout.addWidget(div2)
         side_layout.addSpacing(8)
 
-        logout_btn = QPushButton("→  Вийти")
-        logout_btn.setObjectName("navButton")
-        logout_btn.setStyleSheet(
+        self.logout_btn = QPushButton("← Вийти")
+        self.logout_btn.setObjectName("navButton")
+        self.logout_btn.setStyleSheet(
             "QPushButton#navButton { color: rgba(252,165,165,0.85); }"
             "QPushButton#navButton:hover { background: rgba(239,68,68,0.12); color: #fca5a5; }"
         )
-        logout_btn.clicked.connect(self._logout)
-        side_layout.addWidget(logout_btn)
+        self.logout_btn.clicked.connect(self._logout)
+        side_layout.addWidget(self.logout_btn)
 
         content = QWidget()
         content_layout = QVBoxLayout(content)
@@ -548,10 +211,12 @@ class MainWindow(QMainWindow):
         scroll = QScrollArea()
         scroll.setWidgetResizable(True)
         scroll.setFrameShape(QFrame.Shape.NoFrame)
+        scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
+        scroll.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
         scroll.setWidget(self.stack)
         content_layout.addWidget(scroll)
 
-        root_layout.addWidget(sidebar)
+        root_layout.addWidget(self.sidebar)
         root_layout.addWidget(content, 1)
 
         self.stack.currentChanged.connect(self._on_page_changed)
@@ -564,18 +229,116 @@ class MainWindow(QMainWindow):
             button.setChecked(True)
 
     def _animate_page_transition(self):
-        """Fade the current page out briefly for a smooth feel."""
-        widget = self.stack.currentWidget()
-        if widget is None:
-            return
-        effect = QGraphicsOpacityEffect(widget)
-        widget.setGraphicsEffect(effect)
-        anim = QPropertyAnimation(effect, b"opacity", widget)
-        anim.setDuration(160)
-        anim.setStartValue(0.45)
-        anim.setEndValue(1.0)
-        anim.setEasingCurve(QEasingCurve.Type.OutCubic)
-        anim.start()
+        """Page transition (animations disabled to avoid QPainter conflicts)."""
+        pass
+    
+    def _toggle_sidebar(self):
+        """Toggle sidebar between collapsed and expanded states."""
+        if self._sidebar_collapsed:
+            self._expand_sidebar()
+        else:
+            self._collapse_sidebar()
+    
+    def _collapse_sidebar(self):
+        """Collapse sidebar to show only icons."""
+        self._sidebar_collapsed = True
+        self._collapse_btn.setText("▶")
+        self._collapse_btn.setToolTip("Розгорнути меню")
+        
+        # Animate width change
+        self._animate_sidebar_width(self._sidebar_collapsed_width)
+        
+        # Hide subtitle and reduce spacing
+        self.brand_subtitle.setVisible(False)
+        self.sidebar.setProperty("collapsed", True)
+        self.sidebar.style().unpolish(self.sidebar)
+        self.sidebar.style().polish(self.sidebar)
+        
+        # Update layout margins for collapsed state
+        self.sidebar.layout().setContentsMargins(8, 16, 8, 16)
+        
+        # Hide brand title and center the collapse button
+        self.brand_title.setVisible(False)
+        # Center the collapse button by clearing and rebuilding layout
+        # Remove all items from brand layout temporarily
+        while self._brand_layout.count():
+            item = self._brand_layout.takeAt(0)
+            if item.widget() and item.widget() != self._collapse_btn:
+                item.widget().setVisible(False)
+        # Add stretch on both sides of collapse button to center it
+        self._brand_layout.addStretch(1)
+        self._brand_layout.addWidget(self._collapse_btn)
+        self._brand_layout.addStretch(1)
+        
+        # Update nav buttons to show only icons
+        for btn in self.nav_group.buttons():
+            text = btn.text()
+            # Extract emoji/icon (first 2 characters for most emojis)
+            icon = text[:2] if text else ""
+            btn.setProperty("full_text", text)
+            btn.setText(icon)
+            btn.setToolTip(text)
+            # Center the icon with minimal padding
+            btn.setStyleSheet(btn.styleSheet() + "QPushButton { text-align: center; padding-left: 4px; padding-right: 4px; }")
+        
+        # Update logout button
+        logout_text = self.logout_btn.text()
+        self.logout_btn.setProperty("full_text", logout_text)
+        self.logout_btn.setText("←")
+        self.logout_btn.setToolTip("← Вийти")
+        self.logout_btn.setStyleSheet(
+            self.logout_btn.styleSheet() + "QPushButton { text-align: center; padding-left: 4px; padding-right: 4px; }")
+    
+    def _expand_sidebar(self):
+        """Expand sidebar to show full text."""
+        self._sidebar_collapsed = False
+        self._collapse_btn.setText("◀")
+        self._collapse_btn.setToolTip("Згорнути меню")
+        
+        # Animate width change
+        self._animate_sidebar_width(self._sidebar_expanded_width)
+        
+        # Restore layout margins
+        self.sidebar.layout().setContentsMargins(16, 20, 16, 20)
+        
+        # Show text labels and restore brand layout
+        self.brand_title.setVisible(True)
+        self.brand_subtitle.setVisible(True)
+        
+        # Restore original brand layout
+        while self._brand_layout.count():
+            item = self._brand_layout.takeAt(0)
+            if item.widget():
+                item.widget().setVisible(True)
+        self._brand_layout.addWidget(self.brand_title)
+        self._brand_layout.addStretch()
+        self._brand_layout.addWidget(self._collapse_btn)
+        self.sidebar.setProperty("collapsed", False)
+        self.sidebar.style().unpolish(self.sidebar)
+        self.sidebar.style().polish(self.sidebar)
+        
+        # Restore nav button text and left alignment
+        for btn in self.nav_group.buttons():
+            full_text = btn.property("full_text")
+            if full_text:
+                btn.setText(full_text)
+                btn.setToolTip("")
+                # Reset to left alignment (original style)
+                btn.setStyleSheet("")
+        
+        # Restore logout button text and left alignment
+        logout_full_text = self.logout_btn.property("full_text")
+        if logout_full_text:
+            self.logout_btn.setText(logout_full_text)
+            self.logout_btn.setToolTip("")
+            # Restore original logout button style (left aligned)
+            self.logout_btn.setStyleSheet(
+                "QPushButton#navButton { color: rgba(252,165,165,0.85); }"
+                "QPushButton#navButton:hover { background: rgba(239,68,68,0.12); color: #fca5a5; }")
+    
+    def _animate_sidebar_width(self, target_width: int):
+        """Set sidebar width (animation disabled to avoid sipBadCatcherResult crash)."""
+        self.sidebar.setFixedWidth(target_width)
 
     def _patient_pages(self):
         self.dashboard_page = DashboardPage()
@@ -591,13 +354,24 @@ class MainWindow(QMainWindow):
             self.export_json,
             import_callback=self.import_json,
         )
+        
+        # New Prescriptions Page for patient
+        db_session = SessionLocal()
+        self.patient_prescriptions_vm = PrescriptionsViewModel(self.user, db_session)
+        self.patient_prescriptions = PatientPrescriptionsPage(self.patient_prescriptions_vm)
+        
+        # AI Insights Page for patient
+        self.ai_insights_vm = AIInsightsViewModel(self.user, db_session)
+        self.ai_insights_page = AIInsightsPage(self.ai_insights_vm)
 
         return [
-            ("Огляд", self.dashboard_page, "Огляд", "Контроль ключових показників"),
-            ("Вимірювання", self.measurements_page, "Вимірювання", "Внесення та історія записів"),
-            ("Аналітика", self.analytics_page, "Аналітика", "Графіки та порівняння з атм. тиском"),
-            ("Рекомендації", self.recommendations_page, "Рекомендації лікаря", "Поради від вашого лікаря"),
-            ("Профіль", self.settings_page, "Профіль", "Особисті дані та експорт JSON"),
+            ("📊 Огляд", self.dashboard_page, "Огляд", "Контроль ключових показників"),
+            ("📝 Вимірювання", self.measurements_page, "Вимірювання", "Внесення та історія записів"),
+            ("📈 Аналітика", self.analytics_page, "Аналітика", "Графіки та порівняння з атм. тиском"),
+            ("🤖 AI Інсайти", self.ai_insights_page, "Розумний аналіз", "Прогноз ризику та ДНК-профіль"),
+            ("💡 Рекомендації", self.recommendations_page, "Рекомендації лікаря", "Поради від вашого лікаря"),
+            ("💊 Мої ліки", self.patient_prescriptions, "Ліки та прийом", "Призначення та календар"),
+            ("⚙️ Профіль", self.settings_page, "Профіль", "Особисті дані та експорт JSON"),
         ]
 
     def _doctor_pages(self):
@@ -606,29 +380,51 @@ class MainWindow(QMainWindow):
         self.doctor_thresholds = DoctorThresholdsPage()
         self.doctor_report = DoctorReportPage(self.storage, lambda: self.selected_patient)
         self.doctor_profile = DoctorProfilePage(self.storage)
+        
+        # New ViewModels and Pages
+        db_session = SessionLocal()
+        self.doctor_reports_vm = DoctorReportsViewModel(self.user, db_session)
+        self.doctor_medical_reports = DoctorMedicalReportsPage(self.doctor_reports_vm)
+        
+        self.doctor_prescriptions_vm = PrescriptionsViewModel(self.user, db_session)
+        self.doctor_prescriptions = DoctorPrescriptionsPage(self.doctor_prescriptions_vm)
 
         def on_select(patient: User) -> None:
             self.selected_patient = patient
             self.doctor_detail.set_patient(patient)
+            self.doctor_medical_reports.set_patient(patient.id, patient.full_name)
+            self.doctor_prescriptions.set_patient(patient.id, patient.full_name)
             self._switch_page(1)
 
         self.doctor_patients = DoctorPatientsPage(self.storage, on_select)
 
         return [
-            ("Пацієнти", self.doctor_patients, "Пацієнти", "Список пацієнтів"),
-            ("Дані", self.doctor_detail, "Дані пацієнта", "Вимірювання та графік"),
-            ("Рекомендації", self.doctor_recommendations, "Рекомендації", "Поради для пацієнта"),
-            ("Пороги", self.doctor_thresholds, "Пороги пацієнта", "Індивідуальні цільові значення"),
-            ("Звіт", self.doctor_report, "Звіт", "Формування HTML-звіту"),
-            ("Профіль", self.doctor_profile, "Профіль", "Особисті дані та зміна пароля"),
+            ("👥 Пацієнти", self.doctor_patients, "Пацієнти", "Список пацієнтів"),
+            ("📋 Дані", self.doctor_detail, "Дані пацієнта", "Вимірювання та графік"),
+            ("💡 Рекомендації", self.doctor_recommendations, "Рекомендації", "Поради для пацієнта"),
+            ("🎯 Пороги", self.doctor_thresholds, "Пороги пацієнта", "Індивідуальні цільові значення"),
+            ("📄 Звіт", self.doctor_report, "Звіт", "Формування HTML-звіту"),
+            ("🏥 Мед. звіти", self.doctor_medical_reports, "Медичні звіти", "Професійні медичні звіти"),
+            ("💊 Призначення", self.doctor_prescriptions, "Призначення ліків", "Виписка рецептів"),
+            ("⚙️ Профіль", self.doctor_profile, "Профіль", "Особисті дані та зміна пароля"),
         ]
 
     def _admin_pages(self):
+        self.admin_dashboard = AdminDashboardPage()
         self.admin_users = AdminUsersPage(self.storage)
+        self.admin_audit = AdminAuditLogPage()
+        self.admin_medications = AdminMedicationsPage()
+        self.admin_prescriptions = AdminPrescriptionsPage()
+        self.admin_measurements = AdminMeasurementsPage()
         self.admin_thresholds = AdminThresholdsPage(self.storage)
         return [
-            ("Користувачі", self.admin_users, "Користувачі", "Управління обліковими записами"),
-            ("Пороги", self.admin_thresholds, "Пороги", "Глобальні системні значення"),
+            ("📊 Dashboard", self.admin_dashboard, "Статистика", "Системна інформація та метрики"),
+            ("👤 Користувачі", self.admin_users, "Користувачі", "Управління обліковими записами"),
+            ("📋 Журнал", self.admin_audit, "Журнал аудиту", "Історія всіх дій в системі"),
+            ("💊 Ліки", self.admin_medications, "Ліки", "Всі ліки в системі"),
+            ("📝 Рецепти", self.admin_prescriptions, "Рецепти", "Всі призначення лікарів"),
+            ("📈 Вимірювання", self.admin_measurements, "Вимірювання", "Моніторинг всіх замірів АТ"),
+            ("🎯 Пороги", self.admin_thresholds, "Пороги", "Глобальні системні значення"),
         ]
 
     def _on_page_changed(self, index: int):
@@ -738,22 +534,28 @@ def _load_session():
 
 def _install_global_exception_handler(app) -> None:
     import traceback
+    from PyQt6.QtCore import QTimer
 
     def _handle(exc_type, exc_value, exc_tb):
         if issubclass(exc_type, KeyboardInterrupt):
             sys.__excepthook__(exc_type, exc_value, exc_tb)
             return
-        _log.exception(
+        # Suppress secondary SIP error — the real exception was already logged
+        if "sipBadCatcherResult" in str(exc_value):
+            return
+        tb_text = "".join(traceback.format_exception(exc_type, exc_value, exc_tb))
+        _log.error(
             "unhandled_exception",
             exc_type=exc_type.__name__,
             detail=str(exc_value),
+            traceback=tb_text,
         )
-        msg = "".join(traceback.format_exception(exc_type, exc_value, exc_tb))
-        QMessageBox.critical(
+        # Defer QMessageBox to avoid re-entrant event loop inside SIP virtual callbacks
+        QTimer.singleShot(0, lambda: QMessageBox.critical(
             None,
             "Непередбачена помилка",
             f"Сталася непередбачена помилка. Деталі збережено в logs/errors.log.\n\n{exc_value}",
-        )
+        ))
 
     sys.excepthook = _handle
 

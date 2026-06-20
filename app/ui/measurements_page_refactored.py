@@ -5,7 +5,7 @@ from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QTableWidget, QTableWidgetItem,
     QPushButton, QLabel, QHeaderView, QMessageBox, QDialog,
     QLineEdit, QSpinBox, QTextEdit, QFormLayout, QComboBox,
-    QCheckBox, QGroupBox, QGridLayout,
+    QCheckBox, QGroupBox, QGridLayout, QFrame,
 )
 from PyQt6.QtCore import Qt
 
@@ -64,20 +64,44 @@ class MeasurementsPageRefactored(QWidget):
         self._loading_label.setVisible(False)
         layout.addWidget(self._loading_label)
         
+        # Action bar
+        self._action_bar = QFrame()
+        self._action_bar.setStyleSheet("background: qlineargradient(x1:0,y1:0,x2:0,y2:1,stop:0 #f8fafc,stop:1 #f1f5f9); border: 1px solid #e2e8f0; border-radius: 8px; padding: 8px;")
+        action_layout = QHBoxLayout(self._action_bar)
+        action_layout.setContentsMargins(12, 8, 12, 8)
+        action_layout.setSpacing(8)
+        
+        self._selected_label = QLabel("Оберіть вимірювання для дій")
+        self._selected_label.setStyleSheet("color: #64748b; font-size: 13px; font-weight: 500;")
+        action_layout.addWidget(self._selected_label)
+        action_layout.addStretch()
+        
+        self._delete_btn = QPushButton("✕ Видалити")
+        self._delete_btn.setEnabled(False)
+        self._delete_btn.setStyleSheet("QPushButton:disabled{background:#cbd5e1;color:#94a3b8;}QPushButton{background:#f43f5e;color:white;border:none;border-radius:6px;padding:8px 16px;font-weight:600;}QPushButton:hover{background:#e11d48;}")
+        self._delete_btn.clicked.connect(self._on_delete_selected)
+        action_layout.addWidget(self._delete_btn)
+        
+        layout.addWidget(self._action_bar)
+        
         # Table
         self._table = QTableWidget()
-        self._table.setColumnCount(6)
+        self._table.setColumnCount(5)
         self._table.setHorizontalHeaderLabels([
-            "Дата", "Систолічний", "Діастолічний", "Пульс", "Статус", "Дії"
+            "Дата", "Систолічний", "Діастолічний", "Пульс", "Статус"
         ])
         self._table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
         self._table.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
+        self._table.setAlternatingRowColors(True)
+        self._table.verticalHeader().setVisible(False)
+        self._table.verticalHeader().setDefaultSectionSize(40)
+        self._table.itemSelectionChanged.connect(self._on_selection_changed)
         layout.addWidget(self._table)
         
         # Pagination
         pagination = QHBoxLayout()
         
-        self._prev_btn = QPushButton("← Назад")
+        self._prev_btn = QPushButton(" Назад")
         self._prev_btn.clicked.connect(self._on_prev_page)
         pagination.addWidget(self._prev_btn)
         
@@ -91,7 +115,7 @@ class MeasurementsPageRefactored(QWidget):
         
         pagination.addStretch()
         
-        self._next_btn = QPushButton("Вперед →")
+        self._next_btn = QPushButton("Вперед ")
         self._next_btn.clicked.connect(self._on_next_page)
         pagination.addWidget(self._next_btn)
         
@@ -154,10 +178,27 @@ class MeasurementsPageRefactored(QWidget):
                 status_item.setForeground(Qt.GlobalColor.white)
             self._table.setItem(row, 4, status_item)
             
-            # Delete button
-            delete_btn = QPushButton("Видалити")
-            delete_btn.clicked.connect(lambda checked, mid=m.id: self._on_delete(mid))
-            self._table.setCellWidget(row, 5, delete_btn)
+            # Store measurement ID in item for selection handling
+            self._table.item(row, 0).setData(Qt.ItemDataRole.UserRole, m.id)
+    
+    def _on_selection_changed(self):
+        """Handle table selection change."""
+        selected_items = self._table.selectedItems()
+        if not selected_items:
+            self._selected_label.setText("Оберіть вимірювання для дій")
+            self._delete_btn.setEnabled(False)
+            self._selected_measurement_id = None
+            return
+        
+        # Get measurement ID from first column
+        self._selected_measurement_id = selected_items[0].data(Qt.ItemDataRole.UserRole)
+        self._selected_label.setText("Обрано вимірювання")
+        self._delete_btn.setEnabled(True)
+    
+    def _on_delete_selected(self):
+        """Delete selected measurement."""
+        if self._selected_measurement_id:
+            self._on_delete(self._selected_measurement_id)
         
         # Update pagination buttons
         self._prev_btn.setEnabled(self._view_model.has_previous_page)

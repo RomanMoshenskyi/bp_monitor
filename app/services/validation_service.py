@@ -111,4 +111,4 @@ class ValidationService:
 
     def format_errors(self, errors: List[ValidationError]) -> str:
         """Return a human-readable summary of all errors."""
-        return "\n".join(f"• {e.message}" for e in errors)
+        return "\n".join(f" {e.message}" for e in errors)

@@ -5,7 +5,7 @@ from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QTableWidget, QTableWidgetItem,
     QPushButton, QLabel, QHeaderView, QMessageBox, QDialog,
     QLineEdit, QFormLayout, QTextEdit, QComboBox, QDateEdit,
-    QProgressBar, QFileDialog
+    QProgressBar, QFileDialog, QFrame
 )
 from PyQt6.QtCore import Qt, QDate
 
@@ -30,12 +30,12 @@ class ReportsPage(QWidget):
         # Header
         header = QHBoxLayout()
         title = QLabel("Звіти про здоров'я")
-        title.setStyleSheet("font-size: 24px; font-weight: bold;")
+        title.setStyleSheet("font-size: 24px; font-weight: 800; color: #0f172a; letter-spacing: -0.5px;")
         header.addWidget(title)
         header.addStretch()
         
         # Generate button
-        self._generate_btn = QPushButton("➕ Новий звіт")
+        self._generate_btn = QPushButton("+ Новий звіт")
         self._generate_btn.setObjectName("primaryButton")
         self._generate_btn.clicked.connect(self._on_generate_clicked)
         header.addWidget(self._generate_btn)
@@ -47,14 +47,44 @@ class ReportsPage(QWidget):
         self._progress_bar.setVisible(False)
         layout.addWidget(self._progress_bar)
         
+        # Action bar
+        self._action_bar = QFrame()
+        self._action_bar.setStyleSheet("background: qlineargradient(x1:0,y1:0,x2:0,y2:1,stop:0 #f8fafc,stop:1 #f1f5f9); border: 1px solid #e2e8f0; border-radius: 8px; padding: 8px;")
+        action_layout = QHBoxLayout(self._action_bar)
+        action_layout.setContentsMargins(12, 8, 12, 8)
+        action_layout.setSpacing(8)
+        
+        self._selected_label = QLabel("Оберіть звіт для дій")
+        self._selected_label.setStyleSheet("color: #64748b; font-size: 13px; font-weight: 500;")
+        action_layout.addWidget(self._selected_label)
+        action_layout.addStretch()
+        
+        self._download_btn = QPushButton("⬇ Завантажити")
+        self._download_btn.setEnabled(False)
+        self._download_btn.setStyleSheet("QPushButton:disabled{background:#cbd5e1;color:#94a3b8;}QPushButton{background:#06b6d4;color:white;border:none;border-radius:6px;padding:8px 16px;font-weight:600;}QPushButton:hover{background:#0891b2;}")
+        self._download_btn.clicked.connect(self._on_download_selected)
+        action_layout.addWidget(self._download_btn)
+        
+        self._delete_btn = QPushButton("✕ Видалити")
+        self._delete_btn.setEnabled(False)
+        self._delete_btn.setStyleSheet("QPushButton:disabled{background:#cbd5e1;color:#94a3b8;}QPushButton{background:#f43f5e;color:white;border:none;border-radius:6px;padding:8px 16px;font-weight:600;}QPushButton:hover{background:#e11d48;}")
+        self._delete_btn.clicked.connect(self._on_delete_selected)
+        action_layout.addWidget(self._delete_btn)
+        
+        layout.addWidget(self._action_bar)
+        
         # Reports table
         self._table = QTableWidget()
-        self._table.setColumnCount(6)
+        self._table.setColumnCount(5)
         self._table.setHorizontalHeaderLabels([
-            "Назва", "Період", "Формат", "Статус", "Створено", "Дії"
+            "Назва", "Період", "Формат", "Статус", "Створено"
         ])
         self._table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
         self._table.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
+        self._table.setAlternatingRowColors(True)
+        self._table.verticalHeader().setVisible(False)
+        self._table.verticalHeader().setDefaultSectionSize(40)
+        self._table.itemSelectionChanged.connect(self._on_selection_changed)
         layout.addWidget(self._table)
         
         # Status label
@@ -107,22 +137,37 @@ class ReportsPage(QWidget):
             created_text = report.created_at.strftime("%d.%m.%Y %H:%M") if report.created_at else "—"
             self._table.setItem(i, 4, QTableWidgetItem(created_text))
             
-            # Actions
-            actions = QWidget()
-            actions_layout = QHBoxLayout(actions)
-            actions_layout.setContentsMargins(5, 0, 5, 0)
-            
-            if report.status == "completed":
-                download_btn = QPushButton("⬇️")
-                download_btn.setToolTip("Завантажити")
-                download_btn.clicked.connect(lambda checked, rid=report.id: self._on_download(rid))
-                actions_layout.addWidget(download_btn)
-            
-            delete_btn = QPushButton("🗑️")
-            delete_btn.clicked.connect(lambda checked, rid=report.id: self._on_delete(rid))
-            actions_layout.addWidget(delete_btn)
-            
-            self._table.setCellWidget(i, 5, actions)
+            # Store report ID in item for selection handling
+            self._table.item(i, 0).setData(Qt.ItemDataRole.UserRole, report.id)
+    
+    def _on_selection_changed(self):
+        """Handle table selection change."""
+        selected_items = self._table.selectedItems()
+        if not selected_items:
+            self._selected_label.setText("Оберіть звіт для дій")
+            self._download_btn.setEnabled(False)
+            self._delete_btn.setEnabled(False)
+            self._selected_report_id = None
+            return
+        
+        # Get report ID from first column
+        self._selected_report_id = selected_items[0].data(Qt.ItemDataRole.UserRole)
+        report = self._view_model.get_report(self._selected_report_id)
+        
+        if report:
+            self._selected_label.setText(f"Обрано: {report.title}")
+            self._download_btn.setEnabled(report.status == "completed")
+            self._delete_btn.setEnabled(True)
+    
+    def _on_download_selected(self):
+        """Download selected report."""
+        if self._selected_report_id:
+            self._on_download(self._selected_report_id)
+    
+    def _on_delete_selected(self):
+        """Delete selected report."""
+        if self._selected_report_id:
+            self._on_delete(self._selected_report_id)
         
         self._status_label.setText(f"Всього звітів: {len(reports)}")
     
@@ -239,8 +284,8 @@ class GenerateReportDialog(QDialog):
         """Get entered data."""
         return {
             "title": self._title_input.text(),
-            "period_start": self._start_date.date().toPython(),
-            "period_end": self._end_date.date().toPython(),
+            "period_start": self._start_date.date().toPyDate(),
+            "period_end": self._end_date.date().toPyDate(),
             "file_format": self._format_combo.currentData(),
             "description": self._desc_input.toPlainText(),
         }

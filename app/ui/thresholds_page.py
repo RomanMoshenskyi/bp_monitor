@@ -28,7 +28,7 @@ class ThresholdsPage(QWidget):
         # Header
         header = QHBoxLayout()
         title = QLabel("Порогові значення АТ")
-        title.setStyleSheet("font-size: 24px; font-weight: bold;")
+        title.setStyleSheet("font-size: 24px; font-weight: 800; color: #0f172a; letter-spacing: -0.5px;")
         header.addWidget(title)
         header.addStretch()
         layout.addLayout(header)
@@ -39,7 +39,7 @@ class ThresholdsPage(QWidget):
             "Значення поза цими межами будуть позначені як високі або низькі."
         )
         desc.setWordWrap(True)
-        desc.setStyleSheet("color: gray;")
+        desc.setStyleSheet("color: #64748b; font-size: 13px; font-weight: 500;")
         layout.addWidget(desc)
         
         # Systolic thresholds
@@ -128,7 +128,7 @@ class ThresholdsPage(QWidget):
         self._save_btn.clicked.connect(self._on_save)
         buttons.addWidget(self._save_btn)
         
-        self._check_btn = QPushButton("🔍 Перевірити")
+        self._check_btn = QPushButton(" Перевірити")
         self._check_btn.clicked.connect(self._on_check)
         buttons.addWidget(self._check_btn)
         
@@ -166,7 +166,7 @@ class ThresholdsPage(QWidget):
     def _on_input_changed(self):
         """Update status preview when inputs change."""
         self._status_label.setText("Натисніть 'Перевірити' для тестування значень")
-        self._status_label.setStyleSheet("color: gray;")
+        self._status_label.setStyleSheet("color: #94a3b8; font-weight: 500;")
     
     def _on_loading_changed(self, is_loading: bool):
         """Update loading state."""
@@ -209,11 +209,11 @@ class ThresholdsPage(QWidget):
         status = result.get("overall_status", "unknown")
         
         status_messages = {
-            "normal": ("✅ Значення в нормі", "color: green;"),
-            "high": ("⚠️ Значення високі", "color: orange;"),
-            "low": ("⚠️ Значення низькі", "color: blue;"),
+            "normal": (" Значення в нормі", "color: #10b981; font-weight: 700;"),
+            "high": ("⚠ Значення високі", "color: #f59e0b; font-weight: 700;"),
+            "low": ("⚠ Значення низькі", "color: #3b82f6; font-weight: 700;"),
         }
         
-        message, style = status_messages.get(status, ("Невідомий статус", "color: gray;"))
+        message, style = status_messages.get(status, ("Невідомий статус", "color: #94a3b8; font-weight: 500;"))
         self._status_label.setText(message)
         self._status_label.setStyleSheet(style)

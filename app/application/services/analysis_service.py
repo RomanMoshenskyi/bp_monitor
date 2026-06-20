@@ -25,7 +25,7 @@ class AnalysisService:
     
     From diploma (section 3.4.4, formula 3.2):
     - Pearson correlation between BP and atmospheric pressure
-    - r = Σ((xi - x̄)(yi - ȳ)) / √(Σ(xi - x̄)² × Σ(yi - ȳ)²)
+    - r = Σ((xi - x̄)(yi - ȳ)) / √(Σ(xi - x̄)  Σ(yi - ȳ))
     """
     
     def calculate_statistics(self, measurements: List[MeasurementORM]) -> MeasurementStatsDTO:
@@ -66,7 +66,7 @@ class AnalysisService:
         Calculate Pearson correlation coefficient.
         
         Formula from diploma (3.2):
-        r = Σ((xi - x̄)(yi - ȳ)) / √(Σ(xi - x̄)² × Σ(yi - ȳ)²)
+        r = Σ((xi - x̄)(yi - ȳ)) / √(Σ(xi - x̄)  Σ(yi - ȳ))
         
         Args:
             bp_values: List of blood pressure values (systolic)
@@ -91,7 +91,7 @@ class AnalysisService:
             for x, y in zip(bp_values, pressure_values)
         )
         
-        # Calculate denominator √(Σ(xi - x̄)² × Σ(yi - ȳ)²)
+        # Calculate denominator √(Σ(xi - x̄)  Σ(yi - ȳ))
         sum_squared_x = sum((x - x_mean) ** 2 for x in bp_values)
         sum_squared_y = sum((y - y_mean) ** 2 for y in pressure_values)
         

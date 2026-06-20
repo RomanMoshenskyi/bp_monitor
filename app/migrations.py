@@ -38,6 +38,9 @@ def run_migrations(conn=None) -> None:
         _migrate_email_column(conn)
         _migrate_soft_delete(conn)
         _migrate_doctor_patient_assignments(conn)
+        _migrate_users_columns(conn)
+        _migrate_orm_tables(conn)
+        _migrate_medications_table(conn)
         if own:
             conn.commit()
     finally:
@@ -102,6 +105,118 @@ def _migrate_doctor_patient_assignments(conn) -> None:
         sql = sql_path.read_text(encoding="utf-8")
         with conn.cursor() as cur:
             cur.execute(sql)
+        conn.commit()
+
+
+def _migrate_orm_tables(conn) -> None:
+    """Create new ORM tables for doctor reports, prescriptions, medications."""
+    with conn.cursor() as cur:
+        cur.execute(
+            """
+            SELECT EXISTS (
+                SELECT 1 FROM information_schema.tables
+                WHERE table_schema = 'public'
+                  AND table_name = 'doctor_reports'
+            )
+            """
+        )
+        if cur.fetchone()[0]:
+            return  # Already migrated
+    
+    schema_path = Path(__file__).resolve().parent.parent / "schema_new_tables.sql"
+    if schema_path.exists():
+        sql = schema_path.read_text(encoding="utf-8")
+        with conn.cursor() as cur:
+            cur.execute(sql)
+        conn.commit()
+
+
+def _migrate_users_columns(conn) -> None:
+    """Add missing columns to users table for ORM compatibility."""
+    sql_path = MIGRATIONS_DIR / "006_fix_users_columns.sql"
+    if sql_path.exists():
+        sql = sql_path.read_text(encoding="utf-8")
+        with conn.cursor() as cur:
+            cur.execute(sql)
+        conn.commit()
+
+
+def _migrate_medications_table(conn) -> None:
+    """Update medications table schema to remove patient_id and frequency/notes."""
+    with conn.cursor() as cur:
+        # Check if medications table exists
+        cur.execute(
+            """
+            SELECT EXISTS (
+                SELECT 1 FROM information_schema.tables
+                WHERE table_schema = 'public' AND table_name = 'medications'
+            )
+            """
+        )
+        if not cur.fetchone()[0]:
+            return  # Table doesn't exist yet
+        
+        # Check if patient_id column still exists
+        cur.execute(
+            """
+            SELECT EXISTS (
+                SELECT 1 FROM information_schema.columns
+                WHERE table_schema = 'public' AND table_name = 'medications' AND column_name = 'patient_id'
+            )
+            """
+        )
+        if cur.fetchone()[0]:
+            # Drop patient_id column
+            cur.execute("ALTER TABLE medications DROP COLUMN patient_id")
+        
+        # Change dosage from Float to String if needed
+        cur.execute(
+            """
+            SELECT data_type
+            FROM information_schema.columns
+            WHERE table_schema = 'public' AND table_name = 'medications' AND column_name = 'dosage'
+            """
+        )
+        result = cur.fetchone()
+        if result and result[0] == 'double precision':
+            cur.execute("ALTER TABLE medications ALTER COLUMN dosage TYPE VARCHAR(50)")
+        
+        # Make unit nullable if needed
+        cur.execute(
+            """
+            SELECT is_nullable
+            FROM information_schema.columns
+            WHERE table_schema = 'public' AND table_name = 'medications' AND column_name = 'unit'
+            """
+        )
+        result = cur.fetchone()
+        if result and result[0] == 'NO':
+            cur.execute("ALTER TABLE medications ALTER COLUMN unit DROP NOT NULL")
+        
+        # Drop frequency column if exists
+        cur.execute(
+            """
+            SELECT EXISTS (
+                SELECT 1 FROM information_schema.columns
+                WHERE table_schema = 'public' AND table_name = 'medications' AND column_name = 'frequency'
+            )
+            """
+        )
+        if cur.fetchone()[0]:
+            cur.execute("ALTER TABLE medications DROP COLUMN frequency")
+        
+        # Drop notes column if exists
+        cur.execute(
+            """
+            SELECT EXISTS (
+                SELECT 1 FROM information_schema.columns
+                WHERE table_schema = 'public' AND table_name = 'medications' AND column_name = 'notes'
+            )
+            """
+        )
+        if cur.fetchone()[0]:
+            cur.execute("ALTER TABLE medications DROP COLUMN notes")
+        
         conn.commit()
 
 

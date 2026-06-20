@@ -7,6 +7,15 @@ from .weather_dto import WeatherSnapshotDTO
 from .analysis_dto import MeasurementStatsDTO, AnalysisResultDTO, CorrelationResultDTO
 from .recommendation_dto import RecommendationDTO, RecommendationCreateDTO
 from .report_dto import ReportDTO, ReportCreateDTO
+from .doctor_report_dto import DoctorReportDTO, DoctorReportCreateDTO
+from .prescription_dto import (
+    PrescriptionDTO, 
+    PrescriptionCreateDTO, 
+    PrescriptionIntakeDTO,
+    AdherenceStatsDTO,
+    CalendarDayDTO,
+    CalendarMonthDTO,
+)
 
 __all__ = [
     "UserDTO",
@@ -23,4 +32,12 @@ __all__ = [
     "RecommendationCreateDTO",
     "ReportDTO",
     "ReportCreateDTO",
+    "DoctorReportDTO",
+    "DoctorReportCreateDTO",
+    "PrescriptionDTO",
+    "PrescriptionCreateDTO",
+    "PrescriptionIntakeDTO",
+    "AdherenceStatsDTO",
+    "CalendarDayDTO",
+    "CalendarMonthDTO",
 ]

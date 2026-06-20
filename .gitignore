@@ -3,3 +3,7 @@ __pycache__/
 *.pyc
 .venv/
 .session
+.DS_Store
+logs/
+doctor_reports/
+bp_monitor_export.json

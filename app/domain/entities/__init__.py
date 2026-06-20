@@ -14,6 +14,8 @@ from app.domain.entities.daily_summary_orm import DailySummaryORM
 from app.domain.entities.recommendation_orm import RecommendationORM, SeverityLevel
 from app.domain.entities.audit_log_orm import AuditLogEntryORM
 from app.domain.entities.report_orm import ReportORM, ReportFormat, ReportStatus
+from app.domain.entities.doctor_report_orm import DoctorReportORM
+from app.domain.entities.prescription_orm import PrescriptionORM, PrescriptionStatus
 
 __all__ = [
     # Enums
@@ -22,7 +24,8 @@ __all__ = [
     "SeverityLevel",
     "ReportFormat",
     "ReportStatus",
-    # ORM Models (11 total)
+    "PrescriptionStatus",
+    # ORM Models (13 total)
     "UserORM",
     "MeasurementORM",
     "WeatherSnapshotORM",
@@ -34,4 +37,6 @@ __all__ = [
     "RecommendationORM",
     "AuditLogEntryORM",
     "ReportORM",
+    "DoctorReportORM",
+    "PrescriptionORM",
 ]

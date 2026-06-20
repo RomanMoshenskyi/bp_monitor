@@ -13,11 +13,11 @@ class MeasurementRepository:
         with db_cursor() as cur:
             cur.execute(
                 """
-                SELECT id, timestamp, systolic, diastolic, pulse, mood, notes,
+                SELECT id, measured_at, systolic, diastolic, pulse, mood, notes,
                        atmospheric_pressure, medication_taken, activity_level
                 FROM measurements
                 WHERE user_id = %s AND deleted_at IS NULL
-                ORDER BY timestamp
+                ORDER BY measured_at
                 """,
                 (user_id,),
             )
@@ -29,11 +29,11 @@ class MeasurementRepository:
         with db_cursor() as cur:
             cur.execute(
                 """
-                SELECT id, timestamp, systolic, diastolic, pulse, mood, notes,
+                SELECT id, measured_at, systolic, diastolic, pulse, mood, notes,
                        atmospheric_pressure, medication_taken, activity_level
                 FROM measurements
                 WHERE user_id = %s AND deleted_at IS NULL
-                ORDER BY timestamp DESC
+                ORDER BY measured_at DESC
                 LIMIT %s OFFSET %s
                 """,
                 (user_id, limit, offset),
@@ -53,11 +53,11 @@ class MeasurementRepository:
             cur.execute(
                 """
                 INSERT INTO measurements (
-                    id, user_id, timestamp, systolic, diastolic, pulse, mood, notes,
+                    id, user_id, measured_at, systolic, diastolic, pulse, mood, notes,
                     atmospheric_pressure, medication_taken, activity_level
                 ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                 ON CONFLICT (id) DO UPDATE SET
-                    timestamp = EXCLUDED.timestamp,
+                    measured_at = EXCLUDED.measured_at,
                     systolic = EXCLUDED.systolic,
                     diastolic = EXCLUDED.diastolic,
                     pulse = EXCLUDED.pulse,
@@ -91,7 +91,7 @@ class MeasurementRepository:
                 """
                 SELECT 1 FROM measurements
                 WHERE user_id = %s
-                  AND timestamp = %s
+                  AND measured_at = %s
                   AND systolic = %s
                   AND diastolic = %s
                   AND pulse = %s

@@ -24,7 +24,7 @@ class CorrelationResultDTO:
     """
     Pearson correlation result from diploma formula 3.2.
     
-    r = Σ((xi - x̄)(yi - ȳ)) / √(Σ(xi - x̄)² × Σ(yi - ȳ)²)
+    r = Σ((xi - x̄)(yi - ȳ)) / √(Σ(xi - x̄)  Σ(yi - ȳ))
     """
     correlation_coefficient: float  # r value (-1 to 1)
     p_value: Optional[float]  # Statistical significance

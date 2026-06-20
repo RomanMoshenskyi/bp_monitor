@@ -5,7 +5,7 @@ from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QTableWidget, QTableWidgetItem,
     QPushButton, QLabel, QHeaderView, QMessageBox, QDialog,
     QLineEdit, QFormLayout, QSpinBox, QTextEdit, QComboBox,
-    QCheckBox, QGroupBox
+    QCheckBox, QGroupBox, QFrame
 )
 from PyQt6.QtCore import Qt
 
@@ -30,7 +30,7 @@ class MedicationsPage(QWidget):
         # Header
         header = QHBoxLayout()
         title = QLabel("Управління ліками")
-        title.setStyleSheet("font-size: 24px; font-weight: bold;")
+        title.setStyleSheet("font-size: 24px; font-weight: 800; color: #0f172a; letter-spacing: -0.5px;")
         header.addWidget(title)
         header.addStretch()
         
@@ -42,14 +42,44 @@ class MedicationsPage(QWidget):
         
         layout.addLayout(header)
         
+        # Action bar
+        self._action_bar = QFrame()
+        self._action_bar.setStyleSheet("background: qlineargradient(x1:0,y1:0,x2:0,y2:1,stop:0 #f8fafc,stop:1 #f1f5f9); border: 1px solid #e2e8f0; border-radius: 8px; padding: 8px;")
+        action_layout = QHBoxLayout(self._action_bar)
+        action_layout.setContentsMargins(12, 8, 12, 8)
+        action_layout.setSpacing(8)
+        
+        self._selected_label = QLabel("Оберіть ліки для дій")
+        self._selected_label.setStyleSheet("color: #64748b; font-size: 13px; font-weight: 500;")
+        action_layout.addWidget(self._selected_label)
+        action_layout.addStretch()
+        
+        self._intake_btn = QPushButton("✓ Прийняв")
+        self._intake_btn.setEnabled(False)
+        self._intake_btn.setStyleSheet("QPushButton:disabled{background:#cbd5e1;color:#94a3b8;}QPushButton{background:#10b981;color:white;border:none;border-radius:6px;padding:8px 16px;font-weight:600;}QPushButton:hover{background:#059669;}")
+        self._intake_btn.clicked.connect(self._on_intake_selected)
+        action_layout.addWidget(self._intake_btn)
+        
+        self._delete_btn = QPushButton("✕ Видалити")
+        self._delete_btn.setEnabled(False)
+        self._delete_btn.setStyleSheet("QPushButton:disabled{background:#cbd5e1;color:#94a3b8;}QPushButton{background:#f43f5e;color:white;border:none;border-radius:6px;padding:8px 16px;font-weight:600;}QPushButton:hover{background:#e11d48;}")
+        self._delete_btn.clicked.connect(self._on_delete_selected)
+        action_layout.addWidget(self._delete_btn)
+        
+        layout.addWidget(self._action_bar)
+        
         # Medications table
         self._table = QTableWidget()
-        self._table.setColumnCount(6)
+        self._table.setColumnCount(5)
         self._table.setHorizontalHeaderLabels([
-            "Назва", "Дозування", "Частота", "Статус", "Примітки", "Дії"
+            "Назва", "Дозування", "Частота", "Статус", "Примітки"
         ])
         self._table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
         self._table.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
+        self._table.setAlternatingRowColors(True)
+        self._table.verticalHeader().setVisible(False)
+        self._table.verticalHeader().setDefaultSectionSize(40)
+        self._table.itemSelectionChanged.connect(self._on_selection_changed)
         layout.addWidget(self._table)
         
         # Status label
@@ -77,22 +107,37 @@ class MedicationsPage(QWidget):
             
             self._table.setItem(i, 4, QTableWidgetItem(med.notes or ""))
             
-            # Action buttons
-            actions = QWidget()
-            actions_layout = QHBoxLayout(actions)
-            actions_layout.setContentsMargins(5, 0, 5, 0)
-            
-            intake_btn = QPushButton("✓ Прийняв")
-            intake_btn.setProperty("medication_id", med.id)
-            intake_btn.clicked.connect(lambda checked, mid=med.id: self._on_intake(mid))
-            actions_layout.addWidget(intake_btn)
-            
-            delete_btn = QPushButton("🗑️")
-            delete_btn.setProperty("medication_id", med.id)
-            delete_btn.clicked.connect(lambda checked, mid=med.id: self._on_delete(mid))
-            actions_layout.addWidget(delete_btn)
-            
-            self._table.setCellWidget(i, 5, actions)
+            # Store medication ID in item for selection handling
+            self._table.item(i, 0).setData(Qt.ItemDataRole.UserRole, med.id)
+    
+    def _on_selection_changed(self):
+        """Handle table selection change."""
+        selected_items = self._table.selectedItems()
+        if not selected_items:
+            self._selected_label.setText("Оберіть ліки для дій")
+            self._intake_btn.setEnabled(False)
+            self._delete_btn.setEnabled(False)
+            self._selected_medication_id = None
+            return
+        
+        # Get medication ID from first column
+        self._selected_medication_id = selected_items[0].data(Qt.ItemDataRole.UserRole)
+        medication = self._view_model.get_medication(self._selected_medication_id)
+        
+        if medication:
+            self._selected_label.setText(f"Обрано: {medication.name}")
+            self._intake_btn.setEnabled(medication.is_active)
+            self._delete_btn.setEnabled(True)
+    
+    def _on_intake_selected(self):
+        """Record intake for selected medication."""
+        if self._selected_medication_id:
+            self._on_intake(self._selected_medication_id)
+    
+    def _on_delete_selected(self):
+        """Delete selected medication."""
+        if self._selected_medication_id:
+            self._on_delete(self._selected_medication_id)
         
         self._status_label.setText(f"Всього ліків: {len(medications)}")
     

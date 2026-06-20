@@ -101,6 +101,21 @@ def _row_to_user(row: tuple) -> User:
 
 
 class AuthService:
+    def __init__(self):
+        self._audit_service = None
+    
+    def _get_audit_service(self):
+        """Lazy load audit service."""
+        if self._audit_service is None:
+            try:
+                from .infrastructure.orm.base import SessionLocal
+                from .application.services.audit_service import AuditService
+                db = SessionLocal()
+                self._audit_service = AuditService(db)
+            except:
+                self._audit_service = None
+        return self._audit_service
+    
     def login(self, username: str, password: str) -> Optional[User]:
         with db_cursor() as cur:
             cur.execute(
@@ -117,6 +132,15 @@ class AuthService:
             return None
         user = _row_to_user(row)
         _log.info("user_login", user_id=user.id, role=user.role)
+        
+        # Log to audit service
+        audit = self._get_audit_service()
+        if audit:
+            try:
+                audit.log(user.id, "login", f"User {username} logged in")
+            except:
+                pass
+        
         return user
 
     def register(
@@ -128,7 +152,7 @@ class AuthService:
         age: int,
     ) -> User:
         """Публічна реєстрація — лише пацієнти."""
-        return self._insert_user(
+        user = self._insert_user(
             username=username,
             password=password,
             full_name=full_name,
@@ -136,6 +160,16 @@ class AuthService:
             age=age,
             email=email,
         )
+        
+        # Log to audit service
+        audit = self._get_audit_service()
+        if audit:
+            try:
+                audit.log(user.id, "user_created", f"User {username} registered")
+            except:
+                pass
+        
+        return user
 
     def _insert_user(
         self,
