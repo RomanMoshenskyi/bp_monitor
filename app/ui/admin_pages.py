@@ -368,11 +368,51 @@ class AdminAuditLogPage(QWidget):
         finally:
             db.close()
     
+    def _build_log_query(self, db: Session):
+        query = db.query(AuditLogEntryORM).order_by(desc(AuditLogEntryORM.timestamp))
+
+        user_filter = self._user_filter.text().strip()
+        if user_filter:
+            query = query.join(UserORM).filter(UserORM.username.ilike(f"%{user_filter}%"))
+
+        action_filter = self._action_filter.currentText()
+        if action_filter != "Всі дії":
+            query = query.filter(AuditLogEntryORM.action == action_filter)
+
+        return query
+
     def _export_logs(self):
-        path, _ = QFileDialog.getSaveFileName(self, "Експорт журналу", "audit_log.csv", "CSV (*.csv)")
-        if path:
-            # Export logic here
-            QMessageBox.information(self, "Готово", f"Журнал експортовано до {path}")
+        path, _ = QFileDialog.getSaveFileName(
+            self, "Експорт журналу", "audit_log.csv", "CSV (*.csv)"
+        )
+        if not path:
+            return
+
+        db = SessionLocal()
+        try:
+            import csv
+
+            logs = self._build_log_query(db).all()
+            with open(path, "w", encoding="utf-8-sig", newline="") as f:
+                writer = csv.writer(f)
+                writer.writerow(["ID", "Час", "Користувач", "Роль", "Дія", "Деталі"])
+                for log in logs:
+                    writer.writerow([
+                        log.id,
+                        log.timestamp.strftime("%d.%m.%Y %H:%M:%S") if log.timestamp else "",
+                        log.user.username if log.user else "",
+                        log.user.role if log.user else "",
+                        log.action,
+                        log.details or "",
+                    ])
+
+            QMessageBox.information(
+                self, "Готово", f"Журнал експортовано ({len(logs)} записів) до {path}"
+            )
+        except Exception as e:
+            QMessageBox.critical(self, "Помилка", f"Не вдалося експортувати журнал: {str(e)}")
+        finally:
+            db.close()
 
 
 class AdminMedicationsPage(QWidget):
